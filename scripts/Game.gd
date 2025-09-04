@@ -42,11 +42,22 @@ var _cam_margin: float = VIRT_H * 0.35
 var _tower_top_y: float = 1280.0
 
 func _ready() -> void:
+	print("Game _ready() called")
 	_load_best_from_disk()
 	_init_donut_pool()
 	_update_score_label()
 	_hide_game_over()
-	_spawn_donut(spawner.get_spawn_position())
+	
+	print("Spawner reference: ", spawner)
+	if spawner != null:
+		var initial_spawn_pos = spawner.get_spawn_position()
+		print("Initial spawn position: ", initial_spawn_pos)
+		_spawn_donut(initial_spawn_pos)
+	else:
+		print("Spawner is null!")
+		_spawn_donut(Vector2(VIRT_W * 0.5, 120.0))
+	
+	print("Game initialized, state: ", _state)
 
 	# Подключение сигналов кнопок
 	restart_button.pressed.connect(_on_restart_pressed)
@@ -70,20 +81,40 @@ func _notification(what: int) -> void:
 			cam.position.x = VIRT_W * 0.5
 
 # ===== Ввод =====
-func _unhandled_input(event: InputEvent) -> void:
+func _input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch and event.pressed:
+		print("Touch input detected at: ", event.position)
 		_on_tap(event.position)
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		print("Mouse click detected at: ", event.position, " calling _on_tap")
+		_on_tap(event.position)
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch and event.pressed:
+		print("UNHANDLED Touch input detected at: ", event.position)
+		_on_tap(event.position)
+	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		print("UNHANDLED Mouse click detected at: ", event.position, " calling _on_tap")
 		_on_tap(event.position)
 
 func _on_tap(_pos: Vector2) -> void:
+	print("_on_tap called with position: ", _pos)
+	print("Current game state: ", _state, " (PLAY = ", GameState.PLAY, ")")
+	print("Game over panel visible: ", game_over_panel.visible)
+	
 	if _state != GameState.PLAY:
+		print("Game not in PLAY state, ignoring tap")
 		return
 	if game_over_panel.visible:
+		print("Game over panel is visible, ignoring tap")
 		return
 	if not _cooldown_ready():
+		print("Cooldown not ready, ignoring tap")
 		return
+	
+	print("All checks passed, spawning donut...")
 	var spawn_pos: Vector2 = spawner.get_spawn_position() if spawner != null else Vector2(VIRT_W * 0.5, 120.0)
+	print("Spawn position: ", spawn_pos)
 	_spawn_donut(spawn_pos)
 
 func _cooldown_ready() -> bool:
@@ -110,15 +141,20 @@ func _init_donut_pool() -> void:
 		donut_pool.append(d)
 
 func _spawn_donut(world_pos: Vector2) -> void:
+	print("_spawn_donut called with world_pos: ", world_pos)
 	var d: RigidBody2D = _take_from_pool()
+	print("Donut from pool: ", d)
 	if d == null:
+		print("No donut in pool, creating new one")
 		var node: Node = DONUT_SCENE.instantiate()
 		d = node as RigidBody2D
 		if d == null:
+			print("Failed to create donut from scene")
 			if node != null:
 				node.free()
 			return
 		add_child(d)
+		print("New donut created and added to scene")
 
 	# Сброс состояний
 	d.freeze = false
@@ -137,6 +173,8 @@ func _spawn_donut(world_pos: Vector2) -> void:
 	d.connect("missed", Callable(self, "_on_donut_missed").bind(donut_obj))
 
 	active_donuts.append(d)
+	print("Donut spawned successfully at position: ", d.global_position)
+	print("Donut freeze: ", d.freeze, " sleeping: ", d.sleeping)
 
 func _take_from_pool() -> RigidBody2D:
 	if donut_pool.is_empty():
