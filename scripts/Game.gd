@@ -1,10 +1,10 @@
 extends Node2D
-## Шаг 7: счёт, рекорд (ConfigFile), рестарт/продолжение, Game Over.
-## - +1 очко за каждый "успокоившийся" пончик (signal settled)
-## - Промах (signal missed) -> Game Over
-## - Рекорд сохраняется в user://save.cfg (section "stats", key "best")
-## - Restart: чистка, сброс камеры/счёта/состояний
-## - Continue: заглушка rewarded, одна попытка на игру
+## Шаг 8: баланс/сложность + всё с предыдущих шагов.
+## - Скорость каретки растёт с очками.
+## - Камера даёт больший запас над вершиной при высоком счёте.
+## - Верхние пончики стабильнее: повышаем angular_damp и "мягчим" пороги settle.
+## - Без тернарного ? : (используем a if cond else b).
+## - Явные типы (treat warnings as errors).
 
 const VIRT_W := 720.0
 const VIRT_H := 1280.0
@@ -36,39 +36,46 @@ var _best: int = 0
 var _can_continue: bool = true
 var _state: int = GameState.PLAY
 
-# Камера/башня
+# Камера / башня
 var _cam_start_y: float = 640.0
 var _cam_margin: float = VIRT_H * 0.35
 var _tower_top_y: float = 1280.0
 
+# ===== Сложность =====
+const SPAWNER_BASE_SPEED := 180.0      # px/s при Score=0
+const SPAWNER_MAX_FACTOR := 1.6        # максимум множителя скорости
+const SPAWNER_SCORE_RATE := 0.02       # +2% скорости за очко (до MAX_FACTOR)
+
+const CAM_MARGIN_MIN := 0.35           # 35% высоты экрана
+const CAM_MARGIN_MAX := 0.45           # до 45% при большом счёте
+const CAM_MARGIN_SCORE_CAP := 20       # к ~20 очкам достигаем CAM_MARGIN_MAX
+
+const DAMP_BASE := 0.70                # angular_damp базовый
+const DAMP_MAX := 1.00                 # верхняя граница
+const DAMP_SCORE_RATE := 0.01          # +0.01 за очко (к ~30 очкам ≈1.0)
+
+const SETTLE_LIN_BASE := 8.0           # базовый линейный порог
+const SETTLE_LIN_MAX := 12.0           # предел "мягкости" линейного порога
+const SETTLE_ANG_BASE := 0.6           # базовый угловой порог
+const SETTLE_ANG_MAX := 1.0            # предел "мягкости" углового порога
+const SETTLE_RATE := 0.10              # вклад в линейный порог на очко
+const SETTLE_ANG_RATE := 0.02          # вклад в угловой порог на очко
+
 func _ready() -> void:
-	print("Game _ready() called")
 	_load_best_from_disk()
 	_init_donut_pool()
 	_update_score_label()
 	_hide_game_over()
-	
-	print("Spawner reference: ", spawner)
-	if spawner != null:
-		var initial_spawn_pos = spawner.get_spawn_position()
-		print("Initial spawn position: ", initial_spawn_pos)
-		_spawn_donut(initial_spawn_pos)
-	else:
-		print("Spawner is null!")
-		_spawn_donut(Vector2(VIRT_W * 0.5, 120.0))
-	
-	print("Game initialized, state: ", _state)
 
-	# Подключение сигналов кнопок
-	restart_button.pressed.connect(_on_restart_pressed)
-	continue_button.pressed.connect(_on_continue_pressed)
-
-	# Позиция/лимиты камеры
+	# Камера
 	if cam != null:
 		cam.position = Vector2(VIRT_W * 0.5, VIRT_H * 0.5)
 		_cam_start_y = cam.position.y
 		_tower_top_y = cam.position.y + VIRT_H * 0.5
 		_apply_camera_limits()
+
+	# Применить сложность на старте
+	_recalc_difficulty()
 
 func _process(_delta: float) -> void:
 	_cleanup_fallen()
@@ -81,40 +88,20 @@ func _notification(what: int) -> void:
 			cam.position.x = VIRT_W * 0.5
 
 # ===== Ввод =====
-func _input(event: InputEvent) -> void:
-	if event is InputEventScreenTouch and event.pressed:
-		print("Touch input detected at: ", event.position)
-		_on_tap(event.position)
-	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		print("Mouse click detected at: ", event.position, " calling _on_tap")
-		_on_tap(event.position)
-
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch and event.pressed:
-		print("UNHANDLED Touch input detected at: ", event.position)
 		_on_tap(event.position)
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		print("UNHANDLED Mouse click detected at: ", event.position, " calling _on_tap")
 		_on_tap(event.position)
 
 func _on_tap(_pos: Vector2) -> void:
-	print("_on_tap called with position: ", _pos)
-	print("Current game state: ", _state, " (PLAY = ", GameState.PLAY, ")")
-	print("Game over panel visible: ", game_over_panel.visible)
-	
 	if _state != GameState.PLAY:
-		print("Game not in PLAY state, ignoring tap")
 		return
 	if game_over_panel.visible:
-		print("Game over panel is visible, ignoring tap")
 		return
 	if not _cooldown_ready():
-		print("Cooldown not ready, ignoring tap")
 		return
-	
-	print("All checks passed, spawning donut...")
 	var spawn_pos: Vector2 = spawner.get_spawn_position() if spawner != null else Vector2(VIRT_W * 0.5, 120.0)
-	print("Spawn position: ", spawn_pos)
 	_spawn_donut(spawn_pos)
 
 func _cooldown_ready() -> bool:
@@ -141,20 +128,15 @@ func _init_donut_pool() -> void:
 		donut_pool.append(d)
 
 func _spawn_donut(world_pos: Vector2) -> void:
-	print("_spawn_donut called with world_pos: ", world_pos)
 	var d: RigidBody2D = _take_from_pool()
-	print("Donut from pool: ", d)
 	if d == null:
-		print("No donut in pool, creating new one")
 		var node: Node = DONUT_SCENE.instantiate()
 		d = node as RigidBody2D
 		if d == null:
-			print("Failed to create donut from scene")
 			if node != null:
 				node.free()
 			return
 		add_child(d)
-		print("New donut created and added to scene")
 
 	# Сброс состояний
 	d.freeze = false
@@ -166,15 +148,21 @@ func _spawn_donut(world_pos: Vector2) -> void:
 	d.set_physics_process(true)
 	d.sleeping = false
 
-	# Сигналы (очистим/переподключим, чтобы не накапливать)
+	# Стабильность верхних пончиков по мере роста счёта
+	var damp: float = clamp(DAMP_BASE + float(_score) * DAMP_SCORE_RATE, DAMP_BASE, DAMP_MAX)
+	d.angular_damp = damp
+	var lin_thr: float = clamp(SETTLE_LIN_BASE + float(_score) * SETTLE_RATE, SETTLE_LIN_BASE, SETTLE_LIN_MAX)
+	var ang_thr: float = clamp(SETTLE_ANG_BASE + float(_score) * SETTLE_ANG_RATE, SETTLE_ANG_BASE, SETTLE_ANG_MAX)
+	d.set("settle_linear_speed_threshold", lin_thr)
+	d.set("settle_angular_speed_threshold", ang_thr)
+
+	# Сигналы (сначала очищаем старые коннекты)
 	_reset_donut_signals(d)
 	var donut_obj: Object = d
 	d.connect("settled", Callable(self, "_on_donut_settled").bind(donut_obj))
 	d.connect("missed", Callable(self, "_on_donut_missed").bind(donut_obj))
 
 	active_donuts.append(d)
-	print("Donut spawned successfully at position: ", d.global_position)
-	print("Donut freeze: ", d.freeze, " sleeping: ", d.sleeping)
 
 func _take_from_pool() -> RigidBody2D:
 	if donut_pool.is_empty():
@@ -234,6 +222,7 @@ func _apply_camera_limits() -> void:
 func _update_camera_follow() -> void:
 	if cam == null:
 		return
+	# Цель — держать вершину башни с запасом _cam_margin
 	var target_y: float = min(_cam_start_y, _tower_top_y - _cam_margin)
 	if target_y < cam.position.y:
 		cam.position.y = target_y
@@ -245,29 +234,46 @@ func _on_donut_settled(donut_obj: Object) -> void:
 	# Счёт
 	_score += 1
 	_update_score_label()
-	# Вершина башни
+	# Вершина башни — минимальное Y "замерших" тел
 	_tower_top_y = min(_tower_top_y, d.global_position.y)
+	# Пересчитать сложность
+	_recalc_difficulty()
 
 func _on_donut_missed(_donut_obj: Object) -> void:
 	_set_game_over()
 
-# ===== Game Over / Restart / Continue =====
+# ===== Сложность: скорость каретки и запас камеры =====
+func _recalc_difficulty() -> void:
+	# Скорость каретки: base * clamp(1 + score*rate, 1, MAX_FACTOR)
+	var factor: float = 1.0 + float(_score) * SPAWNER_SCORE_RATE
+	if factor > SPAWNER_MAX_FACTOR:
+		factor = SPAWNER_MAX_FACTOR
+	if spawner != null:
+		spawner.speed = SPAWNER_BASE_SPEED * factor
+
+	# Запас камеры: линейная интерполяция от MIN к MAX к ~20 очкам
+	var t: float = float(_score)
+	if t > float(CAM_MARGIN_SCORE_CAP):
+		t = float(CAM_MARGIN_SCORE_CAP)
+	var k: float = t / float(CAM_MARGIN_SCORE_CAP) # 0..1
+	var margin_ratio: float = CAM_MARGIN_MIN + (CAM_MARGIN_MAX - CAM_MARGIN_MIN) * k
+	_cam_margin = VIRT_H * margin_ratio
+
+# ===== Game Over / Restart / Continue / Save =====
 func _set_game_over() -> void:
 	if _state == GameState.GAMEOVER:
 		return
 	_state = GameState.GAMEOVER
 	_show_game_over()
-	# Обновим и сохраним рекорд
 	if _score > _best:
 		_best = _score
 		_save_best_to_disk()
-	_update_score_label() # чтобы сразу показать best в лейбле
+	_update_score_label()
 
 func _on_restart_pressed() -> void:
 	_reset_game()
 
 func _on_continue_pressed() -> void:
-	# Заглушка rewarded: разрешим 1 раз за попытку
 	if _state != GameState.GAMEOVER:
 		return
 	if not _can_continue:
@@ -276,28 +282,24 @@ func _on_continue_pressed() -> void:
 	_grant_continue()
 
 func _grant_continue() -> void:
-	# Скрываем панель и возвращаемся к PLAY
 	_hide_game_over()
 	_state = GameState.PLAY
-	# Дополнительно можно слегка поднять нижний лимит, но пока не требуется.
 
 func _reset_game() -> void:
-	# Очистка всех активных пончиков
 	for d in active_donuts.duplicate():
 		_recycle_donut(d)
-	# Сброс счёта и флагов
 	_score = 0
 	_can_continue = true
 	_state = GameState.PLAY
 	_update_score_label()
 	_hide_game_over()
-	# Камера: вернём внутренние ориентиры (вниз не опускаем)
+	# Камера: вернуть ориентиры; позицию — к стартовой
 	if cam != null:
 		_tower_top_y = cam.position.y + VIRT_H * 0.5
-		# Можно принудительно вернуть позицию камеры к стартовой:
 		cam.position.y = _cam_start_y
+	# Пересчитать сложность под нулевой счёт
+	_recalc_difficulty()
 
-# ===== Сохранение =====
 func _load_best_from_disk() -> void:
 	var cfg := ConfigFile.new()
 	var err: int = cfg.load(SAVE_PATH)
