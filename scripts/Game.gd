@@ -46,6 +46,11 @@ func _ready() -> void:
 	_init_donut_pool()
 	_update_score_label()
 	_hide_game_over()
+	_spawn_donut(spawner.get_spawn_position())
+
+	# Подключение сигналов кнопок
+	restart_button.pressed.connect(_on_restart_pressed)
+	continue_button.pressed.connect(_on_continue_pressed)
 
 	# Позиция/лимиты камеры
 	if cam != null:
