@@ -1,7 +1,7 @@
-[gd_scene load_steps=4 format=3 uid="uid://dmqbn6yhtjwbu"]
+[gd_scene load_steps=4 format=3 uid="uid://cq03irpslm0xv"]
 
 [ext_resource type="Script" uid="uid://byv6i8g71nd1c" path="res://scripts/Game.gd" id="1"]
-[ext_resource type="PackedScene" uid="uid://bxaxwqmbi4rik" path="res://scenes/spawner.tscn" id="2_yqjtg"]
+[ext_resource type="PackedScene" uid="uid://cqtbisskdn4xt" path="res://scenes/spawner.tscn" id="2_yqjtg"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_uwrxv"]
 size = Vector2(720, 80)
