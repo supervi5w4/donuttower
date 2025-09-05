@@ -88,23 +88,41 @@ func _notification(what: int) -> void:
 			cam.position.x = VIRT_W * 0.5
 
 # ===== Ввод =====
-func _unhandled_input(event: InputEvent) -> void:
+func _input(event: InputEvent) -> void:
+	print("Input event received: ", event)
 	if event is InputEventScreenTouch and event.pressed:
+		print("Screen touch detected")
 		_on_tap(event.position)
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		print("Mouse button detected")
+		_on_tap(event.position)
+
+func _unhandled_input(event: InputEvent) -> void:
+	print("Unhandled input event received: ", event)
+	if event is InputEventScreenTouch and event.pressed:
+		print("Unhandled screen touch detected")
+		_on_tap(event.position)
+	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		print("Unhandled mouse button detected")
 		_on_tap(event.position)
 
 func _on_tap(_pos: Vector2) -> void:
+	print("Tap detected at: ", _pos, " State: ", _state)
 	if _state == GameState.READY:
+		print("Starting game...")
 		_start_game()
 		return
 	if _state != GameState.PLAY:
+		print("Game not in PLAY state: ", _state)
 		return
 	if game_over_panel.visible:
+		print("Game over panel is visible, blocking spawn")
 		return
 	if not _cooldown_ready():
+		print("Cooldown not ready")
 		return
 	var spawn_pos: Vector2 = spawner.get_spawn_position() if spawner != null else Vector2(VIRT_W * 0.5, 120.0)
+	print("Spawning donut at: ", spawn_pos)
 	_spawn_donut(spawn_pos)
 
 func _start_game() -> void:
@@ -116,10 +134,7 @@ func _start_game() -> void:
 
 func _cooldown_ready() -> bool:
 	var t: float = float(Time.get_ticks_msec()) / 1000.0
-	if t - _last_spawn_time < SPAWN_COOLDOWN:
-		return false
-	_last_spawn_time = t
-	return true
+	return t - _last_spawn_time >= SPAWN_COOLDOWN
 
 # ===== Пул пончиков =====
 func _init_donut_pool() -> void:
@@ -138,18 +153,22 @@ func _init_donut_pool() -> void:
 		donut_pool.append(d)
 
 func _spawn_donut(world_pos: Vector2) -> void:
+	print("_spawn_donut called with position: ", world_pos)
 	var d: RigidBody2D = _take_from_pool()
 	if d == null:
+		print("No donut in pool, creating new one")
 		var node: Node = DONUT_SCENE.instantiate()
 		d = node as RigidBody2D
 		if d == null:
+			print("ERROR: Donut scene root is not RigidBody2D!")
 			if node != null:
 				node.free()
 			return
 		add_child(d)
+	else:
+		print("Reusing donut from pool")
 
 	# Сброс состояний
-	d.reset_state()
 	d.freeze = false
 	d.linear_velocity = Vector2.ZERO
 	d.angular_velocity = 0.0
@@ -174,6 +193,10 @@ func _spawn_donut(world_pos: Vector2) -> void:
 	d.connect("missed", Callable(self, "_on_donut_missed").bind(donut_obj))
 
 	active_donuts.append(d)
+	
+	# Обновляем время последнего спавна
+	_last_spawn_time = float(Time.get_ticks_msec()) / 1000.0
+	print("Donut spawned successfully! Active donuts: ", active_donuts.size())
 
 func _take_from_pool() -> RigidBody2D:
 	if donut_pool.is_empty():
@@ -189,11 +212,16 @@ func _take_from_pool() -> RigidBody2D:
 
 func _recycle_donut(d: RigidBody2D) -> void:
 	if d == null or not is_instance_valid(d):
+		print("Cannot recycle invalid donut")
 		return
 	if active_donuts.has(d):
+		print("Recycling donut from active list")
 		active_donuts.erase(d)
+	else:
+		print("Recycling donut not in active list")
 	_sleep_and_hide(d)
 	donut_pool.append(d)
+	print("Donut recycled. Active donuts: ", active_donuts.size())
 
 func _sleep_and_hide(d: RigidBody2D) -> void:
 	if d == null or not is_instance_valid(d):
@@ -209,11 +237,15 @@ func _cleanup_fallen() -> void:
 	if active_donuts.is_empty():
 		return
 	var threshold: float = cam.position.y + VIRT_H * 2.0 if cam != null else VIRT_H * 2.0
+	print("Cleanup threshold: ", threshold, " Camera Y: ", cam.position.y if cam != null else "null")
 	for d in active_donuts.duplicate():
 		if d == null or not is_instance_valid(d):
+			print("Removing invalid donut")
 			active_donuts.erase(d)
 			continue
+		print("Donut at Y: ", d.global_position.y, " threshold: ", threshold)
 		if d.global_position.y > threshold:
+			print("Recycling fallen donut at Y: ", d.global_position.y)
 			_recycle_donut(d)
 
 func _reset_donut_signals(d: RigidBody2D) -> void:
@@ -242,7 +274,9 @@ func _update_camera_follow() -> void:
 func _on_donut_settled(donut_obj: Object) -> void:
 	var d: RigidBody2D = donut_obj as RigidBody2D
 	if d == null or not is_instance_valid(d):
+		print("Invalid donut in settled signal")
 		return
+	print("Donut settled at Y: ", d.global_position.y)
 	# Счёт
 	_score += 1
 	_update_score_label()
@@ -251,7 +285,12 @@ func _on_donut_settled(donut_obj: Object) -> void:
 	# Пересчитать сложность
 	_recalc_difficulty()
 
-func _on_donut_missed(_donut_obj: Object) -> void:
+func _on_donut_missed(donut_obj: Object) -> void:
+	var d: RigidBody2D = donut_obj as RigidBody2D
+	if d != null and is_instance_valid(d):
+		print("Donut missed at Y: ", d.global_position.y, " bottom_limit: ", d.get("bottom_y_limit"))
+	else:
+		print("Invalid donut in missed signal")
 	_set_game_over()
 
 # ===== Сложность: скорость каретки и запас камеры =====

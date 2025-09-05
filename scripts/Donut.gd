@@ -41,6 +41,7 @@ func _check_missed() -> void:
 	if _missed_emitted:
 		return
 	if global_position.y > bottom_y_limit:
+		print("Donut missed! Y: ", global_position.y, " limit: ", bottom_y_limit)
 		_missed_emitted = true
 		emit_signal("missed")
 
@@ -55,16 +56,16 @@ func _check_settle(delta: float) -> void:
 
 	if below_linear and below_angular:
 		_settle_timer += delta
+		if _settle_timer >= settle_time_required:
+			print("Donut settled! Y: ", global_position.y, " timer: ", _settle_timer)
+			# Заморозим как статик, чтобы башня не "ползла"
+			freeze_mode = RigidBody2D.FREEZE_MODE_STATIC
+			freeze = true
+			sleeping = true
+			_settled_emitted = true
+			emit_signal("settled")
 	else:
 		_settle_reset()
-
-	if _settle_timer >= settle_time_required:
-		# Заморозим как статик, чтобы башня не "ползла"
-		freeze_mode = RigidBody2D.FREEZE_MODE_STATIC
-		freeze = true
-		sleeping = true
-		_settled_emitted = true
-		emit_signal("settled")
 
 func _settle_reset() -> void:
 	_settle_timer = 0.0

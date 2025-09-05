@@ -37,6 +37,7 @@ offset_top = 16.0
 offset_right = 150.0
 offset_bottom = 80.0
 grow_horizontal = 2
+mouse_filter = 0
 text = "0"
 horizontal_alignment = 1
 vertical_alignment = 1
@@ -87,3 +88,6 @@ limit_bottom = 1280
 limit_smoothed = true
 position_smoothing_enabled = true
 position_smoothing_speed = 8.0
+
+[connection signal="pressed" from="UI/UIRoot/GameOverPanel/Buttons/RestartButton" to="." method="_on_restart_pressed"]
+[connection signal="pressed" from="UI/UIRoot/GameOverPanel/Buttons/ContinueButton" to="." method="_on_continue_pressed"]
