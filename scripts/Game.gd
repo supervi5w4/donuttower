@@ -34,7 +34,7 @@ var _last_spawn_time: float = 0.0
 var _score: int = 0
 var _best: int = 0
 var _can_continue: bool = true
-var _state: int = GameState.PLAY
+var _state: int = GameState.READY
 
 # Камера / башня
 var _cam_start_y: float = 640.0
@@ -95,12 +95,21 @@ func _unhandled_input(event: InputEvent) -> void:
 		_on_tap(event.position)
 
 func _on_tap(_pos: Vector2) -> void:
+	if _state == GameState.READY:
+		_start_game()
+		return
 	if _state != GameState.PLAY:
 		return
 	if game_over_panel.visible:
 		return
 	if not _cooldown_ready():
 		return
+	var spawn_pos: Vector2 = spawner.get_spawn_position() if spawner != null else Vector2(VIRT_W * 0.5, 120.0)
+	_spawn_donut(spawn_pos)
+
+func _start_game() -> void:
+	_state = GameState.PLAY
+	# Спавним первый пончик
 	var spawn_pos: Vector2 = spawner.get_spawn_position() if spawner != null else Vector2(VIRT_W * 0.5, 120.0)
 	_spawn_donut(spawn_pos)
 
@@ -291,7 +300,7 @@ func _reset_game() -> void:
 		_recycle_donut(d)
 	_score = 0
 	_can_continue = true
-	_state = GameState.PLAY
+	_state = GameState.READY
 	_update_score_label()
 	_hide_game_over()
 	# Камера: вернуть ориентиры; позицию — к стартовой
