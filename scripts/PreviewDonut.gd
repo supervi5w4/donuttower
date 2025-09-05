@@ -14,10 +14,27 @@ func _ready() -> void:
 	if sprite != null:
 		sprite.modulate = Color(1.0, 1.0, 1.0, idle_alpha)
 		sprite.z_index = 10  # поверх линии указателя/фона
+		# Убеждаемся, что масштаб установлен правильно
+		sprite.scale = Vector2(0.16, 0.16)
 
 func flash_drop() -> void:
+	print("PreviewDonut.flash_drop() called!")
 	if sprite == null:
+		print("ERROR: sprite is null in PreviewDonut.flash_drop()")
 		return
+	
+	# Получаем оригинальный масштаб из сцены (0.16, 0.16)
+	var original_scale: Vector2 = Vector2(0.16, 0.16)
+	var pressed_scale: Vector2 = original_scale * press_scale
+	
+	print("Starting flash animation - scale from ", original_scale, " to ", pressed_scale, " and back")
 	var tw: Tween = create_tween()
-	tw.tween_property(sprite, "scale", Vector2(press_scale, press_scale), press_in_time)
-	tw.tween_property(sprite, "scale", Vector2(1.0, 1.0), press_out_time)
+	tw.tween_property(sprite, "scale", pressed_scale, press_in_time)
+	tw.tween_property(sprite, "scale", original_scale, press_out_time)
+	print("Flash animation tween created successfully")
+
+func reset_scale() -> void:
+	"""Сбрасывает масштаб превью пончика к оригинальному размеру"""
+	if sprite != null:
+		sprite.scale = Vector2(0.16, 0.16)
+		print("PreviewDonut scale reset to original size")

@@ -27,7 +27,7 @@ enum GameState { READY, PLAY, GAMEOVER }
 @onready var continue_button: Button = get_node("UI/UIRoot/GameOverPanel/Buttons/ContinueButton")
 @onready var spawner: Spawner = get_node("Spawner")
 @onready var yandex_sdk: Node = get_node("YandexSDK")
-@onready var preview: PreviewDonut = get_node("Spawner/PreviewDonut")
+@onready var preview: PreviewDonut = spawner.get_node("PreviewDonut")
 
 var donut_pool: Array[RigidBody2D] = []
 var active_donuts: Array[RigidBody2D] = []
@@ -44,9 +44,9 @@ var _cam_margin: float = VIRT_H * 0.35
 var _tower_top_y: float = 1280.0
 
 # ===== Сложность =====
-const SPAWNER_BASE_SPEED := 180.0      # px/s при Score=0
-const SPAWNER_MAX_FACTOR := 1.6        # максимум множителя скорости
-const SPAWNER_SCORE_RATE := 0.02       # +2% скорости за очко (до MAX_FACTOR)
+const SPAWNER_BASE_SPEED := 320.0      # px/s при Score=0 (увеличено с 250)
+const SPAWNER_MAX_FACTOR := 2.2        # максимум множителя скорости (увеличено с 1.6)
+const SPAWNER_SCORE_RATE := 0.035      # +3.5% скорости за очко (увеличено с 2%)
 
 const CAM_MARGIN_MIN := 0.35           # 35% высоты экрана
 const CAM_MARGIN_MAX := 0.45           # до 45% при большом счёте
@@ -110,7 +110,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		_on_tap(event.position)
 
 func _on_tap(_pos: Vector2) -> void:
+	print("=== TAP EVENT ===")
 	print("Tap detected at: ", _pos, " State: ", _state)
+	print("Game over panel visible: ", game_over_panel.visible if game_over_panel != null else "null")
+	print("Cooldown ready: ", _cooldown_ready())
+	
 	if _state == GameState.READY:
 		print("Starting game...")
 		_start_game()
@@ -124,16 +128,35 @@ func _on_tap(_pos: Vector2) -> void:
 	if not _cooldown_ready():
 		print("Cooldown not ready")
 		return
-	var spawn_pos: Vector2 = spawner.get_spawn_position() if spawner != null else Vector2(VIRT_W * 0.5, 120.0)
+	var spawn_pos: Vector2
+	if spawner != null:
+		spawn_pos = spawner.get_spawn_position()
+		print("Spawner position: ", spawn_pos)
+	else:
+		print("ERROR: spawner is null, using fallback position")
+		spawn_pos = Vector2(VIRT_W * 0.5, 120.0)
 	print("Spawning donut at: ", spawn_pos)
 	if preview != null:
+		print("Calling preview.flash_drop()...")
 		preview.flash_drop()
+	else:
+		print("ERROR: preview is null, cannot call flash_drop()")
 	_spawn_donut(spawn_pos)
+	print("=== END TAP EVENT ===")
 
 func _start_game() -> void:
 	_state = GameState.PLAY
+	
+	# Дополнительная очистка перед началом игры
+	_cleanup_fallen()
+	
 	# Спавним первый пончик
-	var spawn_pos: Vector2 = spawner.get_spawn_position() if spawner != null else Vector2(VIRT_W * 0.5, 120.0)
+	var spawn_pos: Vector2
+	if spawner != null:
+		spawn_pos = spawner.get_spawn_position()
+	else:
+		print("ERROR: spawner is null, using fallback position")
+		spawn_pos = Vector2(VIRT_W * 0.5, 120.0)
 	_spawn_donut(spawn_pos)
 	_last_spawn_time = float(Time.get_ticks_msec()) / 1000.0
 
@@ -158,9 +181,8 @@ func _init_donut_pool() -> void:
 		donut_pool.append(d)
 
 func _spawn_donut(world_pos: Vector2) -> void:
-	print("_spawn_donut called with position: ", world_pos)
+	print("_spawn_donut called with position: ", world_pos, " Game state: ", _state)
 	var d: RigidBody2D = _take_from_pool()
-	d.visible = true
 	if d == null:
 		print("No donut in pool, creating new one")
 		var node: Node = DONUT_SCENE.instantiate()
@@ -171,19 +193,28 @@ func _spawn_donut(world_pos: Vector2) -> void:
 				node.free()
 			return
 		add_child(d)
-		d.visible = true
+		print("New donut created and added to scene")
 	else:
 		print("Reusing donut from pool")
+	
+	d.visible = true
+	print("Donut visibility set to true")
 
 	# Сброс состояний
 	d.freeze = false
+	# Не устанавливаем freeze_mode - по умолчанию объект динамический
 	d.linear_velocity = Vector2.ZERO
 	d.angular_velocity = 0.0
 	d.global_position = world_pos
+	d.scale = Vector2.ONE  # Сброс масштаба к оригинальному размеру
 	d.set("bottom_y_limit", get_world_bottom_limit() + 100.0)
 	d.set_process(true)
 	d.set_physics_process(true)
 	d.sleeping = false
+	
+	# Сброс внутреннего состояния пончика
+	if d.has_method("reset_state"):
+		d.reset_state()
 
 	# Стабильность верхних пончиков по мере роста счёта
 	var damp: float = clamp(DAMP_BASE + float(_score) * DAMP_SCORE_RATE, DAMP_BASE, DAMP_MAX)
@@ -204,6 +235,7 @@ func _spawn_donut(world_pos: Vector2) -> void:
 	# Обновляем время последнего спавна
 	_last_spawn_time = float(Time.get_ticks_msec()) / 1000.0
 	print("Donut spawned successfully! Active donuts: ", active_donuts.size())
+	print("Donut physics state - freeze: ", d.freeze, " sleeping: ", d.sleeping, " freeze_mode: ", d.freeze_mode)
 
 func _take_from_pool() -> RigidBody2D:
 	if donut_pool.is_empty():
@@ -226,6 +258,14 @@ func _recycle_donut(d: RigidBody2D) -> void:
 		active_donuts.erase(d)
 	else:
 		print("Recycling donut not in active list")
+	
+	# Очистка сигналов перед переработкой
+	_reset_donut_signals(d)
+	
+	# Сброс внутреннего состояния пончика
+	if d.has_method("reset_state"):
+		d.reset_state()
+	
 	_sleep_and_hide(d)
 	donut_pool.append(d)
 	print("Donut recycled. Active donuts: ", active_donuts.size())
@@ -238,7 +278,12 @@ func _sleep_and_hide(d: RigidBody2D) -> void:
 	d.set_process(false)
 	d.set_physics_process(false)
 	d.global_position = Vector2(-10000.0, -10000.0)
+	d.scale = Vector2.ONE  # Сброс масштаба к оригинальному размеру
 	d.visible = false
+	# Дополнительный сброс физических свойств
+	d.linear_velocity = Vector2.ZERO
+	d.angular_velocity = 0.0
+	d.freeze_mode = RigidBody2D.FREEZE_MODE_KINEMATIC
 
 func _cleanup_fallen() -> void:
 	if active_donuts.is_empty():
@@ -283,14 +328,18 @@ func _on_donut_settled(donut_obj: Object) -> void:
 	if d == null or not is_instance_valid(d):
 		print("Invalid donut in settled signal")
 		return
+	print("=== DONUT SETTLED ===")
 	print("Donut settled at Y: ", d.global_position.y)
+	print("Current score before: ", _score)
 	# Счёт
 	_score += 1
+	print("Current score after: ", _score)
 	_update_score_label()
 	# Вершина башни — минимальное Y "замерших" тел
 	_tower_top_y = min(_tower_top_y, d.global_position.y)
 	# Пересчитать сложность
 	_recalc_difficulty()
+	print("=== END DONUT SETTLED ===")
 
 func _on_donut_missed(donut_obj: Object) -> void:
 	var d: RigidBody2D = donut_obj as RigidBody2D
@@ -348,19 +397,44 @@ func _grant_continue() -> void:
 	_state = GameState.PLAY
 
 func _reset_game() -> void:
+	print("=== RESETTING GAME ===")
+	print("Before reset - Active donuts: ", active_donuts.size(), " Pool size: ", donut_pool.size())
+	
+	# Полная очистка всех активных пончиков
 	for d in active_donuts.duplicate():
 		_recycle_donut(d)
+	
+	# Очистка всех пончиков в пуле - сброс состояния и сигналов
+	for d in donut_pool:
+		if d != null and is_instance_valid(d):
+			_reset_donut_signals(d)
+			_sleep_and_hide(d)
+			# Сброс внутреннего состояния пончика
+			if d.has_method("reset_state"):
+				d.reset_state()
+	
+	# Сброс игровых переменных
 	_score = 0
 	_can_continue = true
 	_state = GameState.READY
 	_update_score_label()
 	_hide_game_over()
+	
 	# Камера: вернуть ориентиры; позицию — к стартовой
 	if cam != null:
 		_tower_top_y = cam.position.y + VIRT_H * 0.5
 		cam.position.y = _cam_start_y
+	
 	# Пересчитать сложность под нулевой счёт
 	_recalc_difficulty()
+	
+	# Сброс масштаба превью пончика
+	if preview != null:
+		preview.reset_scale()
+	
+	print("After reset - Active donuts: ", active_donuts.size(), " Pool size: ", donut_pool.size())
+	print("Game state set to: ", _state)
+	print("=== GAME RESET COMPLETE ===")
 
 func _load_best_from_disk() -> void:
 	var cfg := ConfigFile.new()

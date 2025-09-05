@@ -1,6 +1,9 @@
-[gd_scene load_steps=2 format=3 uid="uid://cqtbisskdn4xt"]
+[gd_scene load_steps=3 format=3 uid="uid://cqtbisskdn4xt"]
 
 [ext_resource type="Script" uid="uid://dwokc5pmnnfk3" path="res://scripts/Spawner.gd" id="1_2vbf6"]
+[ext_resource type="PackedScene" uid="uid://b0qpy03ykb8c0" path="res://scenes/PreviewDonut.tscn" id="2_preview"]
 
 [node name="Spawner" type="Node2D"]
 script = ExtResource("1_2vbf6")
+
+[node name="PreviewDonut" parent="." instance=ExtResource("2_preview")]

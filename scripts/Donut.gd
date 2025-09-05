@@ -25,15 +25,23 @@ func reset_state() -> void:
 	_settled_emitted = false
 	_missed_emitted = false
 	freeze = false
+	# Не устанавливаем freeze_mode - по умолчанию объект динамический
 	sleeping = false
+	scale = Vector2.ONE  # Сброс масштаба к оригинальному размеру
+	linear_velocity = Vector2.ZERO
+	angular_velocity = 0.0
 
 func _ready() -> void:
 	# На старте убеждаемся, что тело активно
 	freeze = false
+	# Не устанавливаем freeze_mode - по умолчанию объект динамический
 	sleeping = false
 	_settle_reset()
 
 func _physics_process(delta: float) -> void:
+	# Отладочная информация каждые 60 кадров (примерно раз в секунду)
+	if Engine.get_process_frames() % 60 == 0:
+		print("Donut physics - Y: ", global_position.y, " freeze: ", freeze, " sleeping: ", sleeping, " velocity: ", linear_velocity.length())
 	_check_missed()
 	_check_settle(delta)
 
