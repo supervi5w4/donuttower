@@ -27,7 +27,7 @@ enum GameState { READY, PLAY, GAMEOVER }
 @onready var continue_button: Button = get_node("UI/UIRoot/GameOverPanel/Buttons/ContinueButton")
 @onready var spawner: Spawner = get_node("Spawner")
 @onready var yandex_sdk: Node = get_node("YandexSDK")
-@onready var preview: PreviewDonut = get_node("PreviewDonut")
+@onready var preview: PreviewDonut = get_node("Spawner/PreviewDonut")
 
 var donut_pool: Array[RigidBody2D] = []
 var active_donuts: Array[RigidBody2D] = []
@@ -160,6 +160,7 @@ func _init_donut_pool() -> void:
 func _spawn_donut(world_pos: Vector2) -> void:
 	print("_spawn_donut called with position: ", world_pos)
 	var d: RigidBody2D = _take_from_pool()
+	d.visible = true
 	if d == null:
 		print("No donut in pool, creating new one")
 		var node: Node = DONUT_SCENE.instantiate()
@@ -170,6 +171,7 @@ func _spawn_donut(world_pos: Vector2) -> void:
 				node.free()
 			return
 		add_child(d)
+		d.visible = true
 	else:
 		print("Reusing donut from pool")
 

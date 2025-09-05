@@ -3,7 +3,7 @@ class_name PreviewDonut
 ## Превью-пончик, который ездит вместе со Spawner (родителем).
 ## Это НЕ физическое тело. Только визуальная мишень для прицеливания.
 
-@onready var sprite: Sprite2D = get_node("Sprite") as Sprite2D
+@onready var sprite: Sprite2D = get_node("Sprite2D")
 
 @export var idle_alpha: float = 0.85       # лёгкая прозрачность превью
 @export var press_scale: float = 0.94      # масштаб при "щелчке"
