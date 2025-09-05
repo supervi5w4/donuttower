@@ -26,6 +26,7 @@ enum GameState { READY, PLAY, GAMEOVER }
 @onready var restart_button: Button = get_node("UI/UIRoot/GameOverPanel/Buttons/RestartButton")
 @onready var continue_button: Button = get_node("UI/UIRoot/GameOverPanel/Buttons/ContinueButton")
 @onready var spawner: Spawner = get_node("Spawner")
+@onready var yandex_sdk: Node = get_node("YandexSDK")
 
 var donut_pool: Array[RigidBody2D] = []
 var active_donuts: Array[RigidBody2D] = []
@@ -66,6 +67,7 @@ func _ready() -> void:
 	_init_donut_pool()
 	_update_score_label()
 	_hide_game_over()
+	_setup_yandex_sdk()
 
 	# Камера
 	if cam != null:
@@ -320,6 +322,9 @@ func _set_game_over() -> void:
 		_best = _score
 		_save_best_to_disk()
 	_update_score_label()
+	
+	# Показываем Interstitial рекламу при Game Over
+	_show_interstitial_ad()
 
 func _on_restart_pressed() -> void:
 	_reset_game()
@@ -329,8 +334,9 @@ func _on_continue_pressed() -> void:
 		return
 	if not _can_continue:
 		return
-	_can_continue = false
-	_grant_continue()
+	
+	# Показываем Rewarded рекламу для продолжения игры
+	_show_rewarded_ad()
 
 func _grant_continue() -> void:
 	_hide_game_over()
@@ -379,3 +385,56 @@ func _show_game_over() -> void:
 
 func _hide_game_over() -> void:
 	game_over_panel.visible = false
+
+# ===== Яндекс SDK и реклама =====
+func _setup_yandex_sdk() -> void:
+	if yandex_sdk == null:
+		print("YandexSDK node not found")
+		return
+	
+	# Подключаем сигналы от YandexSDK
+	yandex_sdk.interstitial_closed.connect(_on_interstitial_closed)
+	yandex_sdk.rewarded_completed.connect(_on_rewarded_completed)
+	yandex_sdk.rewarded_closed.connect(_on_rewarded_closed)
+	yandex_sdk.ad_error.connect(_on_ad_error)
+
+func _show_interstitial_ad() -> void:
+	"""Показывает Interstitial рекламу при Game Over"""
+	if yandex_sdk != null:
+		print("Показываем Interstitial рекламу")
+		yandex_sdk.show_interstitial()
+	else:
+		print("YandexSDK недоступен, пропускаем Interstitial")
+
+func _show_rewarded_ad() -> void:
+	"""Показывает Rewarded рекламу для продолжения игры"""
+	if yandex_sdk != null:
+		print("Показываем Rewarded рекламу")
+		yandex_sdk.show_rewarded()
+	else:
+		print("YandexSDK недоступен, даем продолжение бесплатно")
+		_grant_continue()
+
+func _on_interstitial_closed(was_shown: bool) -> void:
+	"""Обработчик закрытия Interstitial рекламы"""
+	print("Interstitial реклама закрыта, показана: ", was_shown)
+	# Никаких дополнительных действий не требуется
+
+func _on_rewarded_completed() -> void:
+	"""Обработчик завершения Rewarded рекламы - игрок получил награду"""
+	print("Rewarded реклама завершена, даем продолжение")
+	_can_continue = false
+	_grant_continue()
+
+func _on_rewarded_closed() -> void:
+	"""Обработчик закрытия Rewarded рекламы"""
+	print("Rewarded реклама закрыта")
+
+func _on_ad_error(error_message: String) -> void:
+	"""Обработчик ошибок рекламы"""
+	print("Ошибка рекламы: ", error_message)
+	# При ошибке рекламы даем продолжение бесплатно (для Rewarded)
+	if _state == GameState.GAMEOVER and _can_continue:
+		print("Даем продолжение бесплатно из-за ошибки рекламы")
+		_can_continue = false
+		_grant_continue()
