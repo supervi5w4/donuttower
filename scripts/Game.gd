@@ -27,6 +27,7 @@ enum GameState { READY, PLAY, GAMEOVER }
 @onready var continue_button: Button = get_node("UI/UIRoot/GameOverPanel/Buttons/ContinueButton")
 @onready var spawner: Spawner = get_node("Spawner")
 @onready var yandex_sdk: Node = get_node("YandexSDK")
+@onready var preview: PreviewDonut = get_node("PreviewDonut")
 
 var donut_pool: Array[RigidBody2D] = []
 var active_donuts: Array[RigidBody2D] = []
@@ -81,7 +82,7 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	_cleanup_fallen()
-	_update_camera_follow()
+	# _update_camera_follow()  # Отключено - камера больше не следует за башней
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_SIZE_CHANGED:
@@ -125,6 +126,8 @@ func _on_tap(_pos: Vector2) -> void:
 		return
 	var spawn_pos: Vector2 = spawner.get_spawn_position() if spawner != null else Vector2(VIRT_W * 0.5, 120.0)
 	print("Spawning donut at: ", spawn_pos)
+	if preview != null:
+		preview.flash_drop()
 	_spawn_donut(spawn_pos)
 
 func _start_game() -> void:
@@ -265,13 +268,13 @@ func _apply_camera_limits() -> void:
 	cam.limit_top = -100000
 	cam.limit_bottom = int(VIRT_H)
 
-func _update_camera_follow() -> void:
-	if cam == null:
-		return
-	# Цель — держать вершину башни с запасом _cam_margin
-	var target_y: float = min(_cam_start_y, _tower_top_y - _cam_margin)
-	if target_y < cam.position.y:
-		cam.position.y = target_y
+# func _update_camera_follow() -> void:
+# 	if cam == null:
+# 		return
+# 	# Цель — держать вершину башни с запасом _cam_margin
+# 	var target_y: float = min(_cam_start_y, _tower_top_y - _cam_margin)
+# 	if target_y < cam.position.y:
+# 		cam.position.y = target_y
 
 func _on_donut_settled(donut_obj: Object) -> void:
 	var d: RigidBody2D = donut_obj as RigidBody2D

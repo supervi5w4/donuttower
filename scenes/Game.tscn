@@ -1,7 +1,8 @@
-[gd_scene load_steps=5 format=3 uid="uid://cq03irpslm0xv"]
+[gd_scene load_steps=6 format=3 uid="uid://cq03irpslm0xv"]
 
 [ext_resource type="Script" uid="uid://byv6i8g71nd1c" path="res://scripts/Game.gd" id="1_qbsmt"]
 [ext_resource type="PackedScene" uid="uid://cqtbisskdn4xt" path="res://scenes/spawner.tscn" id="2_cpr0p"]
+[ext_resource type="PackedScene" uid="uid://b0qpy03ykb8c0" path="res://scenes/PreviewDonut.tscn" id="3_78awf"]
 [ext_resource type="Texture2D" uid="uid://cxonxat8jv4ng" path="res://assets/bg/bg_gradient_720x1280.png" id="3_cpr0p"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_uwrxv"]
@@ -89,6 +90,9 @@ limit_bottom = 1280
 limit_smoothed = true
 position_smoothing_enabled = true
 position_smoothing_speed = 8.0
+
+[node name="PreviewDonut" parent="." instance=ExtResource("3_78awf")]
+z_index = 10
 
 [node name="Background" type="Sprite2D" parent="."]
 z_index = -100
