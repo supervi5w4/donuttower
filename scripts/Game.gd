@@ -200,9 +200,9 @@ func _spawn_donut(world_pos: Vector2) -> void:
 	d.visible = true
 	print("Donut visibility set to true")
 
-	# Сброс состояний
+	# Сброс состояний - явно устанавливаем режим физики перед снятием freeze
+	d.freeze_mode = RigidBody2D.FREEZE_MODE_STATIC
 	d.freeze = false
-	# Не устанавливаем freeze_mode - по умолчанию объект динамический
 	d.linear_velocity = Vector2.ZERO
 	d.angular_velocity = 0.0
 	d.global_position = world_pos
@@ -273,6 +273,8 @@ func _recycle_donut(d: RigidBody2D) -> void:
 func _sleep_and_hide(d: RigidBody2D) -> void:
 	if d == null or not is_instance_valid(d):
 		return
+	# Устанавливаем правильный режим заморозки для хранения в пуле
+	d.freeze_mode = RigidBody2D.FREEZE_MODE_STATIC
 	d.freeze = true
 	d.sleeping = true
 	d.set_process(false)
@@ -283,7 +285,6 @@ func _sleep_and_hide(d: RigidBody2D) -> void:
 	# Дополнительный сброс физических свойств
 	d.linear_velocity = Vector2.ZERO
 	d.angular_velocity = 0.0
-	d.freeze_mode = RigidBody2D.FREEZE_MODE_KINEMATIC
 
 func _cleanup_fallen() -> void:
 	if active_donuts.is_empty():
@@ -415,6 +416,7 @@ func _reset_game() -> void:
 	
 	# Сброс игровых переменных
 	_score = 0
+	_last_spawn_time = 0.0
 	_can_continue = true
 	_state = GameState.READY
 	_update_score_label()

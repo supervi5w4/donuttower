@@ -24,8 +24,9 @@ func reset_state() -> void:
 	_settle_timer = 0.0
 	_settled_emitted = false
 	_missed_emitted = false
+	# Явно устанавливаем режим физики перед снятием freeze
+	freeze_mode = RigidBody2D.FREEZE_MODE_STATIC
 	freeze = false
-	# Не устанавливаем freeze_mode - по умолчанию объект динамический
 	sleeping = false
 	scale = Vector2.ONE  # Сброс масштаба к оригинальному размеру
 	linear_velocity = Vector2.ZERO
@@ -33,8 +34,8 @@ func reset_state() -> void:
 
 func _ready() -> void:
 	# На старте убеждаемся, что тело активно
+	freeze_mode = RigidBody2D.FREEZE_MODE_STATIC
 	freeze = false
-	# Не устанавливаем freeze_mode - по умолчанию объект динамический
 	sleeping = false
 	_settle_reset()
 
