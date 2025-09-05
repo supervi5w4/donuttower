@@ -20,6 +20,13 @@ var _settle_timer: float = 0.0
 var _settled_emitted: bool = false
 var _missed_emitted: bool = false
 
+func reset_state() -> void:
+	_settle_timer = 0.0
+	_settled_emitted = false
+	_missed_emitted = false
+	freeze = false
+	sleeping = false
+
 func _ready() -> void:
 	# На старте убеждаемся, что тело активно
 	freeze = false

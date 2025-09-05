@@ -139,6 +139,7 @@ func _spawn_donut(world_pos: Vector2) -> void:
 		add_child(d)
 
 	# Сброс состояний
+	d.reset_state()
 	d.freeze = false
 	d.linear_velocity = Vector2.ZERO
 	d.angular_velocity = 0.0
