@@ -51,6 +51,13 @@
             yandexSDKReady = true;
             console.log('Yandex SDK initialized');
             
+            // Запрашиваем авторизацию для корректного отображения имен в лидерборде
+            ysdk.auth.openAuthDialog().then(() => {
+                console.log('Пользователь авторизован');
+            }).catch((err) => {
+                console.log('Ошибка авторизации или пользователь отказался:', err);
+            });
+            
             // Скрываем загрузочный экран
             document.getElementById('loading').classList.add('hidden');
         }).catch(error => {

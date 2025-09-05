@@ -1,0 +1,17 @@
+keys,ru
+ui.hud.score,Результат
+ui.gameover.your_score,Ваш результат
+ui.error.save_record,Не удалось сохранить рекорд в
+ui.leaderboard.sdk_unavailable,SDK недоступен
+ui.leaderboard.load_error,Не удалось загрузить таблицу результатов
+ui.leaderboard.empty,Таблица результатов пуста
+ui.leaderboard.default_player,Игрок
+ui.gameover.title,Игра окончена!
+ui.leaderboard.title,Лучшие результаты
+ui.leaderboard.loading,Загрузка...
+ui.leaderboard.error,Ошибка загрузки
+ui.menu.button,Меню
+ui.start.button,Начать играть
+ui.start.description,Собирай падающие пончики и набирай очки!
+Управляй башней и лови как можно больше сладостей.
+Будь осторожен - не урони пончики!

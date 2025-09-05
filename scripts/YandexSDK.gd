@@ -6,6 +6,10 @@ signal interstitial_closed(was_shown: bool)
 signal rewarded_completed()
 signal rewarded_closed()
 signal ad_error(error_message: String)
+signal leaderboard_loaded(entries: Array)
+signal leaderboard_error(error_message: String)
+signal score_submitted()
+signal score_submit_error(error_message: String)
 
 var _last_interstitial_time: float = 0.0
 const INTERSTITIAL_COOLDOWN: float = 50.0  # 50 секунд между показами
@@ -38,6 +42,26 @@ func _initialize_yandex_sdk() -> void:
 			_on_ad_error: function(error) {
 				if (window.godot && window.godot.call) {
 					window.godot.call('_on_ad_error', error);
+				}
+			},
+			_on_leaderboard_loaded: function(entries) {
+				if (window.godot && window.godot.call) {
+					window.godot.call('_on_leaderboard_loaded', JSON.stringify(entries));
+				}
+			},
+			_on_leaderboard_error: function(error) {
+				if (window.godot && window.godot.call) {
+					window.godot.call('_on_leaderboard_error', error);
+				}
+			},
+			_on_score_submitted: function() {
+				if (window.godot && window.godot.call) {
+					window.godot.call('_on_score_submitted');
+				}
+			},
+			_on_score_submit_error: function(error) {
+				if (window.godot && window.godot.call) {
+					window.godot.call('_on_score_submit_error', error);
 				}
 			}
 		};
@@ -163,3 +187,96 @@ func _on_rewarded_closed() -> void:
 func _on_ad_error(error_message: String) -> void:
 	print("Ошибка рекламы: ", error_message)
 	ad_error.emit(error_message)
+
+# ===== Лидерборды =====
+func submit_score(score: int) -> void:
+	"""Отправляет результат игрока в лидерборд"""
+	if not OS.has_feature("web"):
+		print("Leaderboard: не веб-платформа, пропускаем отправку результата")
+		score_submitted.emit()
+		return
+	
+	# Проверяем готовность SDK
+	if not is_sdk_ready():
+		print("Leaderboard: SDK не готов, пропускаем отправку результата")
+		score_submitted.emit()
+		return
+	
+	print("Отправляем результат в лидерборд: ", score)
+	
+	var js_code = """
+		if (window.ysdk && window.ysdk.getLeaderboards) {
+			window.ysdk.getLeaderboards().setLeaderboardScore('donuttowerleaderboard', """ + str(score) + """)
+				.then(() => {
+					console.log('Результат отправлен в лидерборд');
+					window.godotCallbacks._on_score_submitted();
+				})
+				.catch((error) => {
+					console.error('Ошибка отправки результата:', error);
+					window.godotCallbacks._on_score_submit_error('Ошибка отправки: ' + error);
+				});
+		} else {
+			console.log('Leaderboard: SDK или getLeaderboards не доступен');
+			window.godotCallbacks._on_score_submitted();
+		}
+	"""
+	
+	JavaScriptBridge.eval(js_code)
+
+func load_leaderboard() -> void:
+	"""Загружает топ-10 результатов из лидерборда"""
+	if not OS.has_feature("web"):
+		print("Leaderboard: не веб-платформа, пропускаем загрузку")
+		leaderboard_loaded.emit([])
+		return
+	
+	# Проверяем готовность SDK
+	if not is_sdk_ready():
+		print("Leaderboard: SDK не готов, пропускаем загрузку")
+		leaderboard_loaded.emit([])
+		return
+	
+	print("Загружаем лидерборд")
+	
+	var js_code = """
+		if (window.ysdk && window.ysdk.getLeaderboards) {
+			window.ysdk.getLeaderboards().getLeaderboardEntries('donuttowerleaderboard', { quantityTop: 10 })
+				.then((entries) => {
+					console.log('Лидерборд загружен:', entries);
+					window.godotCallbacks._on_leaderboard_loaded(entries);
+				})
+				.catch((error) => {
+					console.error('Ошибка загрузки лидерборда:', error);
+					window.godotCallbacks._on_leaderboard_error('Ошибка загрузки: ' + error);
+				});
+		} else {
+			console.log('Leaderboard: SDK или getLeaderboards не доступен');
+			window.godotCallbacks._on_leaderboard_error('SDK недоступен');
+		}
+	"""
+	
+	JavaScriptBridge.eval(js_code)
+
+# Callback функции для лидербордов
+func _on_leaderboard_loaded(entries_json: String) -> void:
+	print("Лидерборд загружен: ", entries_json)
+	var json = JSON.new()
+	var parse_result = json.parse(entries_json)
+	if parse_result == OK:
+		var entries = json.data
+		leaderboard_loaded.emit(entries)
+	else:
+		print("Ошибка парсинга лидерборда: ", json.error_string)
+		leaderboard_error.emit("Ошибка парсинга данных")
+
+func _on_leaderboard_error(error_message: String) -> void:
+	print("Ошибка лидерборда: ", error_message)
+	leaderboard_error.emit(error_message)
+
+func _on_score_submitted() -> void:
+	print("Результат успешно отправлен в лидерборд")
+	score_submitted.emit()
+
+func _on_score_submit_error(error_message: String) -> void:
+	print("Ошибка отправки результата: ", error_message)
+	score_submit_error.emit(error_message)

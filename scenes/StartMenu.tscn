@@ -1,7 +1,18 @@
-[gd_scene load_steps=4 format=3 uid="uid://cexmjcvxnrm1"]
+[gd_scene load_steps=6 format=3 uid="uid://cexmjcvxnrm1"]
 
 [ext_resource type="Script" uid="uid://bjpeell44xmd2" path="res://scripts/StartMenu.gd" id="1_start_menu"]
 [ext_resource type="Texture2D" uid="uid://cxonxat8jv4ng" path="res://assets/bg/bg_gradient_720x1280.png" id="2_bg"]
+[ext_resource type="Script" uid="uid://jluk044172b1" path="res://addons/i18n/i18n_node.gd" id="4_i18n"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_hover"]
+bg_color = Color(1, 0.8, 0.4, 1)
+corner_radius_top_left = 25
+corner_radius_top_right = 25
+corner_radius_bottom_right = 25
+corner_radius_bottom_left = 25
+shadow_color = Color(0, 0, 0, 0.4)
+shadow_size = 10
+shadow_offset = Vector2(0, 5)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button"]
 bg_color = Color(1, 0.6, 0.2, 1)
@@ -32,6 +43,34 @@ grow_vertical = 2
 texture = ExtResource("2_bg")
 stretch_mode = 6
 
+[node name="Overlay" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.7)
+
+[node name="LanguageButton" type="Button" parent="."]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -120.0
+offset_top = 20.0
+offset_right = -20.0
+offset_bottom = 60.0
+grow_horizontal = 0
+theme_override_colors/font_hover_color = Color(0.2, 0.1, 0.05, 1)
+theme_override_colors/font_color = Color(0.2, 0.1, 0.05, 1)
+theme_override_colors/font_pressed_color = Color(0.2, 0.1, 0.05, 1)
+theme_override_font_sizes/font_size = 18
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button")
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+text = "RU"
+
 [node name="MainContainer" type="VBoxContainer" parent="."]
 layout_mode = 1
 anchors_preset = 8
@@ -54,10 +93,12 @@ theme_override_colors/font_hover_color = Color(0.2, 0.1, 0.05, 1)
 theme_override_colors/font_color = Color(0.2, 0.1, 0.05, 1)
 theme_override_colors/font_pressed_color = Color(0.2, 0.1, 0.05, 1)
 theme_override_font_sizes/font_size = 24
-theme_override_styles/hover = SubResource("StyleBoxFlat_button")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button")
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
 text = "Начать играть"
+script = ExtResource("4_i18n")
+translation_key = "ui.start.button"
 
 [node name="DescriptionLabel" type="Label" parent="MainContainer"]
 custom_minimum_size = Vector2(700, 0)
@@ -71,5 +112,8 @@ text = "Собирай падающие пончики и набирай очк�
 horizontal_alignment = 1
 vertical_alignment = 1
 autowrap_mode = 2
+script = ExtResource("4_i18n")
+translation_key = "ui.start.description"
 
+[connection signal="pressed" from="LanguageButton" to="." method="_on_language_button_pressed"]
 [connection signal="pressed" from="MainContainer/StartButton" to="." method="_on_start_button_pressed"]

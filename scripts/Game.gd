@@ -22,12 +22,16 @@ enum GameState { READY, PLAY, GAMEOVER }
 @onready var cam: Camera2D = get_node("Camera2D")
 @onready var ui_root: Control = get_node("UI/UIRoot")
 @onready var score_label: Label = get_node("UI/UIRoot/ScoreLabel")
-@onready var game_over_panel: Panel = get_node("UI/UIRoot/GameOverPanel")
-@onready var restart_button: Button = get_node("UI/UIRoot/GameOverPanel/Buttons/RestartButton")
-@onready var continue_button: Button = get_node("UI/UIRoot/GameOverPanel/Buttons/ContinueButton")
+@onready var game_over_panel: Control = get_node("UI/UIRoot/GameOverPanel")
+@onready var game_over_score_label: Label = get_node("UI/UIRoot/GameOverPanel/MainContainer/ScoreLabel")
+@onready var menu_button: Button = get_node("UI/UIRoot/GameOverPanel/MainContainer/MenuButton")
+@onready var leaderboard_panel: Control = get_node("UI/UIRoot/GameOverPanel/MainContainer/LeaderboardPanel")
 @onready var spawner: Spawner = get_node("Spawner")
 @onready var yandex_sdk: Node = get_node("YandexSDK")
 @onready var preview: PreviewDonut = spawner.get_node("PreviewDonut")
+
+# Таймер для задержки показа рекламы
+var _ad_delay_timer: Timer
 
 var donut_pool: Array[RigidBody2D] = []
 var active_donuts: Array[RigidBody2D] = []
@@ -35,7 +39,6 @@ var active_donuts: Array[RigidBody2D] = []
 var _last_spawn_time: float = 0.0
 var _score: int = 0
 var _best: int = 0
-var _can_continue: bool = true
 var _state: int = GameState.READY
 
 # Камера / башня
@@ -69,6 +72,8 @@ func _ready() -> void:
 	_update_score_label()
 	_hide_game_over()
 	_setup_yandex_sdk()
+	_setup_ad_delay_timer()
+	_setup_language_manager()
 
 	# Камера
 	if cam != null:
@@ -112,6 +117,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func _on_tap(_pos: Vector2) -> void:
 	print("=== TAP EVENT ===")
 	print("Tap detected at: ", _pos, " State: ", _state)
+	@warning_ignore("incompatible_ternary")
 	print("Game over panel visible: ", game_over_panel.visible if game_over_panel != null else "null")
 	print("Cooldown ready: ", _cooldown_ready())
 	
@@ -200,21 +206,15 @@ func _spawn_donut(world_pos: Vector2) -> void:
 	d.visible = true
 	print("Donut visibility set to true")
 
-	# Сброс состояний - явно устанавливаем режим физики перед снятием freeze
-	d.freeze_mode = RigidBody2D.FREEZE_MODE_STATIC
-	d.freeze = false
-	d.linear_velocity = Vector2.ZERO
-	d.angular_velocity = 0.0
+	# Сначала сбрасываем внутреннее состояние пончика
+	if d.has_method("reset_state"):
+		d.reset_state()
+	
+	# Затем устанавливаем позицию и дополнительные свойства
 	d.global_position = world_pos
-	d.scale = Vector2.ONE  # Сброс масштаба к оригинальному размеру
 	d.set("bottom_y_limit", get_world_bottom_limit() + 100.0)
 	d.set_process(true)
 	d.set_physics_process(true)
-	d.sleeping = false
-	
-	# Сброс внутреннего состояния пончика
-	if d.has_method("reset_state"):
-		d.reset_state()
 
 	# Стабильность верхних пончиков по мере роста счёта
 	var damp: float = clamp(DAMP_BASE + float(_score) * DAMP_SCORE_RATE, DAMP_BASE, DAMP_MAX)
@@ -273,7 +273,7 @@ func _recycle_donut(d: RigidBody2D) -> void:
 func _sleep_and_hide(d: RigidBody2D) -> void:
 	if d == null or not is_instance_valid(d):
 		return
-	# Устанавливаем правильный режим заморозки для хранения в пуле
+	# Устанавливаем статический режим для хранения в пуле
 	d.freeze_mode = RigidBody2D.FREEZE_MODE_STATIC
 	d.freeze = true
 	d.sleeping = true
@@ -290,7 +290,8 @@ func _cleanup_fallen() -> void:
 	if active_donuts.is_empty():
 		return
 	var threshold: float = cam.position.y + VIRT_H * 2.0 if cam != null else VIRT_H * 2.0
-	print("Cleanup threshold: ", threshold, " Camera Y: ", cam.position.y if cam != null else "null")
+	var cam_y: float = cam.position.y if cam != null else 0.0
+	print("Cleanup threshold: ", threshold, " Camera Y: ", cam_y)
 	for d in active_donuts.duplicate():
 		if d == null or not is_instance_valid(d):
 			print("Removing invalid donut")
@@ -372,30 +373,32 @@ func _set_game_over() -> void:
 	if _state == GameState.GAMEOVER:
 		return
 	_state = GameState.GAMEOVER
-	_show_game_over()
+	
+	# Проверяем, побит ли рекорд
 	if _score > _best:
 		_best = _score
 		_save_best_to_disk()
-	_update_score_label()
 	
-	# Показываем Interstitial рекламу при Game Over
-	_show_interstitial_ad()
+	# Обновляем отображение очков
+	_update_game_over_score()
+	_update_score_label()
+	_show_game_over()
+	
+	# Отправляем результат в лидерборд
+	_submit_score_to_leaderboard()
+	
+	# Загружаем и показываем лидерборд
+	_load_and_show_leaderboard()
+	
+	# Запускаем таймер для показа рекламы через 3 секунды
+	_start_ad_delay_timer()
 
 func _on_restart_pressed() -> void:
-	_reset_game()
+	# Останавливаем таймер рекламы, если он активен
+	_stop_ad_delay_timer()
+	# Загружаем главное меню вместо сброса игры
+	get_tree().change_scene_to_file("res://scenes/StartMenu.tscn")
 
-func _on_continue_pressed() -> void:
-	if _state != GameState.GAMEOVER:
-		return
-	if not _can_continue:
-		return
-	
-	# Показываем Rewarded рекламу для продолжения игры
-	_show_rewarded_ad()
-
-func _grant_continue() -> void:
-	_hide_game_over()
-	_state = GameState.PLAY
 
 func _reset_game() -> void:
 	print("=== RESETTING GAME ===")
@@ -417,7 +420,6 @@ func _reset_game() -> void:
 	# Сброс игровых переменных
 	_score = 0
 	_last_spawn_time = 0.0
-	_can_continue = true
 	_state = GameState.READY
 	_update_score_label()
 	_hide_game_over()
@@ -451,7 +453,7 @@ func _save_best_to_disk() -> void:
 	cfg.set_value(SAVE_SECTION, SAVE_KEY_BEST, _best)
 	var err: int = cfg.save(SAVE_PATH)
 	if err != OK:
-		push_warning("Не удалось сохранить рекорд в " + SAVE_PATH)
+		push_warning(tr("ui.error.save_record") + " " + SAVE_PATH)
 
 # ===== Вспомогательные =====
 func get_world_bottom_limit() -> float:
@@ -459,7 +461,12 @@ func get_world_bottom_limit() -> float:
 
 func _update_score_label() -> void:
 	if score_label:
-		score_label.text = "Score: " + str(_score) + "\nBest: " + str(_best)
+		score_label.text = tr("ui.hud.score") + ": " + str(_score)
+
+func _update_game_over_score() -> void:
+	"""Обновляет отображение счета в GameOverPanel"""
+	if game_over_score_label:
+		game_over_score_label.text = tr("ui.gameover.your_score") + ": " + str(_score)
 
 func _show_game_over() -> void:
 	game_over_panel.visible = true
@@ -475,9 +482,9 @@ func _setup_yandex_sdk() -> void:
 	
 	# Подключаем сигналы от YandexSDK
 	yandex_sdk.interstitial_closed.connect(_on_interstitial_closed)
-	yandex_sdk.rewarded_completed.connect(_on_rewarded_completed)
-	yandex_sdk.rewarded_closed.connect(_on_rewarded_closed)
 	yandex_sdk.ad_error.connect(_on_ad_error)
+	yandex_sdk.score_submitted.connect(_on_score_submitted)
+	yandex_sdk.score_submit_error.connect(_on_score_submit_error)
 
 func _show_interstitial_ad() -> void:
 	"""Показывает Interstitial рекламу при Game Over"""
@@ -487,35 +494,92 @@ func _show_interstitial_ad() -> void:
 	else:
 		print("YandexSDK недоступен, пропускаем Interstitial")
 
-func _show_rewarded_ad() -> void:
-	"""Показывает Rewarded рекламу для продолжения игры"""
-	if yandex_sdk != null:
-		print("Показываем Rewarded рекламу")
-		yandex_sdk.show_rewarded()
-	else:
-		print("YandexSDK недоступен, даем продолжение бесплатно")
-		_grant_continue()
 
 func _on_interstitial_closed(was_shown: bool) -> void:
 	"""Обработчик закрытия Interstitial рекламы"""
 	print("Interstitial реклама закрыта, показана: ", was_shown)
 	# Никаких дополнительных действий не требуется
 
-func _on_rewarded_completed() -> void:
-	"""Обработчик завершения Rewarded рекламы - игрок получил награду"""
-	print("Rewarded реклама завершена, даем продолжение")
-	_can_continue = false
-	_grant_continue()
 
-func _on_rewarded_closed() -> void:
-	"""Обработчик закрытия Rewarded рекламы"""
-	print("Rewarded реклама закрыта")
 
 func _on_ad_error(error_message: String) -> void:
 	"""Обработчик ошибок рекламы"""
 	print("Ошибка рекламы: ", error_message)
-	# При ошибке рекламы даем продолжение бесплатно (для Rewarded)
-	if _state == GameState.GAMEOVER and _can_continue:
-		print("Даем продолжение бесплатно из-за ошибки рекламы")
-		_can_continue = false
-		_grant_continue()
+	# При ошибке рекламы ничего не делаем
+
+# ===== Лидерборд =====
+func _submit_score_to_leaderboard() -> void:
+	"""Отправляет результат игрока в лидерборд"""
+	if yandex_sdk != null:
+		print("Отправляем результат в лидерборд: ", _score)
+		yandex_sdk.submit_score(_score)
+	else:
+		print("YandexSDK недоступен, пропускаем отправку результата")
+
+func _load_and_show_leaderboard() -> void:
+	"""Загружает и показывает лидерборд"""
+	if leaderboard_panel != null and leaderboard_panel.has_method("load_leaderboard"):
+		print("Загружаем лидерборд")
+		leaderboard_panel.load_leaderboard()
+	else:
+		print("LeaderboardPanel недоступен")
+
+func _on_score_submitted() -> void:
+	"""Обработчик успешной отправки результата"""
+	print("Результат успешно отправлен в лидерборд")
+
+func _on_score_submit_error(error_message: String) -> void:
+	"""Обработчик ошибки отправки результата"""
+	print("Ошибка отправки результата в лидерборд: ", error_message)
+
+# ===== Таймер задержки рекламы =====
+func _setup_ad_delay_timer() -> void:
+	"""Настраивает таймер для задержки показа рекламы"""
+	_ad_delay_timer = Timer.new()
+	_ad_delay_timer.wait_time = 3.0  # 3 секунды задержки
+	_ad_delay_timer.one_shot = true
+	_ad_delay_timer.timeout.connect(_on_ad_delay_timeout)
+	add_child(_ad_delay_timer)
+
+func _start_ad_delay_timer() -> void:
+	"""Запускает таймер для показа рекламы"""
+	if _ad_delay_timer != null:
+		print("Запускаем таймер показа рекламы (3 секунды)")
+		_ad_delay_timer.start()
+
+func _on_ad_delay_timeout() -> void:
+	"""Обработчик срабатывания таймера - показываем рекламу"""
+	print("Таймер рекламы сработал, показываем Interstitial")
+	_show_interstitial_ad()
+
+func _stop_ad_delay_timer() -> void:
+	"""Останавливает таймер показа рекламы"""
+	if _ad_delay_timer != null and _ad_delay_timer.time_left > 0:
+		print("Останавливаем таймер показа рекламы")
+		_ad_delay_timer.stop()
+
+# ===== Управление языками =====
+func _setup_language_manager() -> void:
+	"""Настраивает обработчик смены языка"""
+	if LanguageManager:
+		LanguageManager.language_changed.connect(_on_language_changed)
+
+func _on_language_changed(_language_code: String) -> void:
+	"""Обработчик смены языка - обновляем все тексты"""
+	_update_score_label()
+	_update_game_over_score()
+	_update_all_ui_texts()
+
+func _update_all_ui_texts() -> void:
+	"""Обновляет все тексты в игровом интерфейсе"""
+	print("Обновляем тексты в Game...")
+	# Обновляем кнопку меню
+	if menu_button:
+		menu_button.text = tr("ui.menu.button")
+		print("Обновлена кнопка меню: '", tr("ui.menu.button"), "'")
+	
+	# Обновляем заголовок Game Over
+	var game_over_label = get_node("UI/UIRoot/GameOverPanel/MainContainer/GameOverLabel")
+	if game_over_label:
+		game_over_label.text = tr("ui.gameover.title")
+		print("Обновлен заголовок Game Over: '", tr("ui.gameover.title"), "'")

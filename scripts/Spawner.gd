@@ -5,7 +5,7 @@ class_name Spawner
 
 @export var move_left_x: float = 60.0
 @export var move_right_x: float = 660.0
-@export var move_y: float = 120.0
+@export var move_y: float = 180.0
 @export var speed: float = 180.0 # пикселей/сек
 
 var _dir: int = 1 # 1 вправо, -1 влево

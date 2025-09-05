@@ -24,13 +24,16 @@ func reset_state() -> void:
 	_settle_timer = 0.0
 	_settled_emitted = false
 	_missed_emitted = false
-	# Явно устанавливаем режим физики перед снятием freeze
+	# Сначала замораживаем тело для сброса состояния
+	freeze = true
 	freeze_mode = RigidBody2D.FREEZE_MODE_STATIC
-	freeze = false
-	sleeping = false
-	scale = Vector2.ONE  # Сброс масштаба к оригинальному размеру
+	# Сбрасываем физические свойства
 	linear_velocity = Vector2.ZERO
 	angular_velocity = 0.0
+	scale = Vector2.ONE  # Сброс масштаба к оригинальному размеру
+	sleeping = false
+	# Теперь размораживаем тело, чтобы оно стало динамическим
+	freeze = false
 
 func _ready() -> void:
 	# На старте убеждаемся, что тело активно

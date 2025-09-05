@@ -1,0 +1,46 @@
+﻿msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: ru\n"
+
+msgid "ui.hud.score"
+msgstr "езультат"
+
+msgid "ui.gameover.your_score"
+msgstr "аш результат"
+
+msgid "ui.error.save_record"
+msgstr "е удалось сохранить рекорд в"
+
+msgid "ui.leaderboard.sdk_unavailable"
+msgstr "SDK недоступен"
+
+msgid "ui.leaderboard.load_error"
+msgstr "е удалось загрузить таблицу результатов"
+
+msgid "ui.leaderboard.empty"
+msgstr "Таблица результатов пуста"
+
+msgid "ui.leaderboard.default_player"
+msgstr "грок"
+
+msgid "ui.gameover.title"
+msgstr "гра окончена!"
+
+msgid "ui.leaderboard.title"
+msgstr "учшие результаты"
+
+msgid "ui.leaderboard.loading"
+msgstr "агрузка..."
+
+msgid "ui.leaderboard.error"
+msgstr "шибка загрузки"
+
+msgid "ui.menu.button"
+msgstr "еню"
+
+msgid "ui.start.button"
+msgstr "ачать играть"
+
+msgid "ui.start.description"
+msgstr "Собирай падающие пончики и набирай очки!\nправляй башней и лови как можно больше сладостей.\nудь осторожен - не урони пончики!"

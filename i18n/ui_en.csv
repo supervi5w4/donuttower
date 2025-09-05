@@ -1,0 +1,17 @@
+keys,en
+ui.hud.score,Score
+ui.gameover.your_score,Your score
+ui.error.save_record,Failed to save record to
+ui.leaderboard.sdk_unavailable,SDK unavailable
+ui.leaderboard.load_error,Failed to load leaderboard
+ui.leaderboard.empty,Leaderboard is empty
+ui.leaderboard.default_player,Player
+ui.gameover.title,Game Over!
+ui.leaderboard.title,Best Results
+ui.leaderboard.loading,Loading...
+ui.leaderboard.error,Load Error
+ui.menu.button,Menu
+ui.start.button,Start Playing
+ui.start.description,Collect falling donuts and score points!
+Control the tower and catch as many sweets as possible.
+Be careful - don't drop the donuts!

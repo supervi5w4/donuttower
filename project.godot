@@ -11,9 +11,13 @@ config_version=5
 [application]
 
 config/name="DonutTower"
-run/main_scene="res://scenes/StartMenu.tscn"
+run/main_scene="res://scenes/Main.tscn"
 config/features=PackedStringArray("4.4", "GL Compatibility")
 config/icon="res://icon.svg"
+
+[autoload]
+
+LanguageManager="*res://scripts/LanguageManager.gd"
 
 [display]
 
@@ -30,6 +34,10 @@ tap={
 }
 input_devices/pointing/emulate_touch_from_mouse=false
 input_devices/pointing/emulate_mouse_from_touch=false
+
+[internationalization]
+
+locale/translations=PackedStringArray("res://i18n/ui_en.po", "res://i18n/ui_ru.po")
 
 [rendering]
 
