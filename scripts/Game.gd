@@ -112,6 +112,7 @@ func _start_game() -> void:
 	# Спавним первый пончик
 	var spawn_pos: Vector2 = spawner.get_spawn_position() if spawner != null else Vector2(VIRT_W * 0.5, 120.0)
 	_spawn_donut(spawn_pos)
+	_last_spawn_time = float(Time.get_ticks_msec()) / 1000.0
 
 func _cooldown_ready() -> bool:
 	var t: float = float(Time.get_ticks_msec()) / 1000.0
@@ -202,6 +203,7 @@ func _sleep_and_hide(d: RigidBody2D) -> void:
 	d.set_process(false)
 	d.set_physics_process(false)
 	d.global_position = Vector2(-10000.0, -10000.0)
+	d.visible = false
 
 func _cleanup_fallen() -> void:
 	if active_donuts.is_empty():
