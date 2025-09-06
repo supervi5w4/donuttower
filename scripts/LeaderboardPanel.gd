@@ -7,37 +7,41 @@ extends Control
 @onready var error_label: Label = $ErrorLabel
 @onready var title_label: Label = $TitleLabel
 
-var yandex_sdk: Node
 var leaderboard_entries: Array = []
 
 func _ready() -> void:
-	# Находим YandexSDK в сцене
-	yandex_sdk = get_node("/root/Game/YandexSDK")
-	if yandex_sdk == null:
-		return
-	
-	# Подключаем сигналы
-	yandex_sdk.leaderboard_loaded.connect(_on_leaderboard_loaded)
-	yandex_sdk.leaderboard_error.connect(_on_leaderboard_error)
+	# Подключаем сигналы от официального YandexSdk
+	YandexSdk.leaderboard_entries_loaded.connect(_on_leaderboard_entries_loaded)
 	
 	# Настраиваем начальное состояние
 	_show_loading()
 
 func load_leaderboard() -> void:
 	"""Загружает данные лидерборда"""
-	if yandex_sdk != null:
-		yandex_sdk.load_leaderboard()
+	print("LeaderboardPanel: Загрузка лидерборда...")
+	# Проверяем авторизацию перед загрузкой
+	YandexSdk.check_is_authorized()
+	# Подключаемся к сигналу проверки авторизации
+	if not YandexSdk.check_auth.is_connected(_on_auth_checked_for_load):
+		YandexSdk.check_auth.connect(_on_auth_checked_for_load)
+
+func _on_auth_checked_for_load(is_authorized: bool) -> void:
+	"""Обработчик проверки авторизации для загрузки лидерборда"""
+	print("LeaderboardPanel: Авторизация проверена: ", is_authorized)
+	if is_authorized:
+		# Загружаем данные лидерборда
+		YandexSdk.load_leaderboard_entries("donuttowerleaderboard", true, 5, 10)
 	else:
-		_show_error(tr("ui.leaderboard.sdk_unavailable"))
+		print("LeaderboardPanel: Пользователь не авторизован, лидерборд не загружен")
+		_show_error(tr("ui.leaderboard.auth_required"))
 
-func _on_leaderboard_loaded(entries: Array) -> void:
+func _on_leaderboard_entries_loaded(data: Dictionary) -> void:
 	"""Обработчик успешной загрузки лидерборда"""
-	leaderboard_entries = entries
-	_display_leaderboard()
-
-func _on_leaderboard_error(error_message: String) -> void:
-	"""Обработчик ошибки загрузки лидерборда"""
-	_show_error(tr("ui.leaderboard.load_error"))
+	if data.has("entries"):
+		leaderboard_entries = data.entries
+		_display_leaderboard()
+	else:
+		_show_error(tr("ui.leaderboard.load_error"))
 
 func _display_leaderboard() -> void:
 	"""Отображает загруженные данные лидерборда"""

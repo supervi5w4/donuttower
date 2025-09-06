@@ -27,7 +27,7 @@ enum GameState { READY, PLAY, GAMEOVER }
 @onready var menu_button: Button = get_node("UI/UIRoot/GameOverPanel/MainContainer/MenuButton")
 @onready var leaderboard_panel: Control = get_node("UI/UIRoot/GameOverPanel/MainContainer/LeaderboardPanel")
 @onready var spawner: Spawner = get_node("Spawner")
-@onready var yandex_sdk: Node = get_node("YandexSDK")
+# YandexSDK теперь доступен как автозагруженный синглтон
 @onready var preview: PreviewDonut = spawner.get_node("PreviewDonut")
 
 # Таймер для задержки показа рекламы
@@ -430,40 +430,58 @@ func _hide_game_over() -> void:
 
 # ===== Яндекс SDK и реклама =====
 func _setup_yandex_sdk() -> void:
-	if yandex_sdk == null:
-		return
-	
-	# Подключаем сигналы от YandexSDK
-	yandex_sdk.interstitial_closed.connect(_on_interstitial_closed)
-	yandex_sdk.ad_error.connect(_on_ad_error)
-	yandex_sdk.score_submitted.connect(_on_score_submitted)
-	yandex_sdk.score_submit_error.connect(_on_score_submit_error)
+	# Подключаем сигналы от официального YandexSdk
+	YandexSdk.interstitial_ad.connect(_on_interstitial_ad)
+	YandexSdk.rewarded_ad.connect(_on_rewarded_ad)
 
 func _show_interstitial_ad() -> void:
 	"""Показывает Interstitial рекламу при Game Over"""
-	if yandex_sdk != null:
-		yandex_sdk.show_interstitial()
-	else:
-		pass
+	YandexSdk.show_interstitial_ad()
 
 
-func _on_interstitial_closed(was_shown: bool) -> void:
-	"""Обработчик закрытия Interstitial рекламы"""
-	# Никаких дополнительных действий не требуется
+func _on_interstitial_ad(result: String) -> void:
+	"""Обработчик результата Interstitial рекламы"""
+	match result:
+		"opened":
+			print("Interstitial реклама открыта")
+		"closed":
+			print("Interstitial реклама закрыта")
+		"error":
+			print("Ошибка показа Interstitial рекламы")
 
-
-
-func _on_ad_error(error_message: String) -> void:
-	"""Обработчик ошибок рекламы"""
-	# При ошибке рекламы ничего не делаем
+func _on_rewarded_ad(result: String) -> void:
+	"""Обработчик результата Rewarded рекламы"""
+	match result:
+		"opened":
+			print("Rewarded реклама открыта")
+		"rewarded":
+			print("Награда получена!")
+		"closed":
+			print("Rewarded реклама закрыта")
+		"error":
+			print("Ошибка показа Rewarded рекламы")
 
 # ===== Лидерборд =====
 func _submit_score_to_leaderboard() -> void:
 	"""Отправляет результат игрока в лидерборд"""
-	if yandex_sdk != null:
-		yandex_sdk.submit_score(_score)
+	print("Game: Отправка результата в лидерборд: ", _score, " очков")
+	
+	# Проверяем авторизацию перед отправкой
+	YandexSdk.check_is_authorized()
+	# Подключаемся к сигналу проверки авторизации
+	if not YandexSdk.check_auth.is_connected(_on_auth_checked):
+		YandexSdk.check_auth.connect(_on_auth_checked)
+
+func _on_auth_checked(is_authorized: bool) -> void:
+	"""Обработчик проверки авторизации"""
+	print("Game: Авторизация проверена: ", is_authorized)
+	if is_authorized:
+		# Отправляем результат в лидерборд
+		YandexSdk.save_leaderboard_score("donuttowerleaderboard", _score)
 	else:
-		pass
+		print("Game: Пользователь не авторизован, результат не отправлен в лидерборд")
+		# Можно предложить авторизацию
+		YandexSdk.open_auth_dialog()
 
 func _load_and_show_leaderboard() -> void:
 	"""Загружает и показывает лидерборд"""
@@ -472,11 +490,7 @@ func _load_and_show_leaderboard() -> void:
 	else:
 		pass
 
-func _on_score_submitted() -> void:
-	"""Обработчик успешной отправки результата"""
-
-func _on_score_submit_error(error_message: String) -> void:
-	"""Обработчик ошибки отправки результата"""
+# Обработчики для лидерборда больше не нужны, так как официальный SDK не возвращает сигналы для save_leaderboard_score
 
 # ===== Таймер задержки рекламы =====
 func _setup_ad_delay_timer() -> void:

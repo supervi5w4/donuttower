@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=3 uid="uid://cq03irpslm0xv"]
+[gd_scene load_steps=15 format=3 uid="uid://m4fo5p61vdhr"]
 
 [ext_resource type="Script" uid="uid://byv6i8g71nd1c" path="res://scripts/Game.gd" id="1_qbsmt"]
 [ext_resource type="PackedScene" uid="uid://cqtbisskdn4xt" path="res://scenes/spawner.tscn" id="2_cpr0p"]
@@ -7,12 +7,13 @@
 [ext_resource type="Texture2D" uid="uid://cxonxat8jv4ng" path="res://assets/bg/bg_gradient_720x1280.png" id="3_cpr0p"]
 [ext_resource type="Script" uid="uid://3fki8lsl8c72" path="res://scripts/YandexSDK.gd" id="4_yandex"]
 [ext_resource type="Script" uid="uid://c3jvrg1auyltl" path="res://scripts/LeaderboardPanel.gd" id="5_leaderboard"]
+[ext_resource type="AudioStream" uid="uid://d30ly4wm7or8c" path="res://assets/music/music.mp3" id="8_400sg"]
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_g4kob"]
-size = Vector2(39.1727, 207.157)
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_kiw3p"]
+size = Vector2(29.1249, 39.227)
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_qy1jj"]
-size = Vector2(40, 200)
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_400sg"]
+size = Vector2(8.70258, 12.8401)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_uwrxv"]
 size = Vector2(720, 132)
@@ -53,9 +54,10 @@ script = ExtResource("1_qbsmt")
 [node name="LeftWall" type="StaticBody2D" parent="."]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="LeftWall"]
-position = Vector2(660.5, 1071.36)
-scale = Vector2(3.03783, 0.737234)
-shape = SubResource("RectangleShape2D_g4kob")
+position = Vector2(660, 1114)
+rotation = 3.14159
+scale = Vector2(2.27453, -1.68885)
+shape = SubResource("RectangleShape2D_kiw3p")
 
 [node name="Sprite2D" type="Sprite2D" parent="LeftWall"]
 position = Vector2(661, 1071)
@@ -65,9 +67,10 @@ texture = ExtResource("2_kiw3p")
 [node name="RightWall" type="StaticBody2D" parent="."]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="RightWall"]
-position = Vector2(52, 1079)
-scale = Vector2(-2.57532, 0.684481)
-shape = SubResource("RectangleShape2D_qy1jj")
+position = Vector2(50, 1110)
+rotation = 3.14159
+scale = Vector2(-7.13036, 5.9857)
+shape = SubResource("RectangleShape2D_400sg")
 
 [node name="Sprite2D" type="Sprite2D" parent="RightWall"]
 position = Vector2(55, 1079)
@@ -277,5 +280,11 @@ texture = ExtResource("3_cpr0p")
 
 [node name="YandexSDK" type="Node" parent="."]
 script = ExtResource("4_yandex")
+
+[node name="MusicPlayer" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("8_400sg")
+volume_db = -21.551
+autoplay = true
+parameters/looping = true
 
 [connection signal="pressed" from="UI/UIRoot/GameOverPanel/MainContainer/MenuButton" to="." method="_on_restart_pressed"]
