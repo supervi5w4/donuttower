@@ -9,6 +9,14 @@ class_name Donut
 signal settled
 signal missed
 
+# Словарь с текстурами пончиков
+const DONUT_TEXTURES = {
+	"pink": preload("res://assets/donuts/donut_pink.png"),
+	"chocolate": preload("res://assets/donuts/donut_chocolate.png"),
+	"blue": preload("res://assets/donuts/donut_blue.png"),
+	"rainbow": preload("res://assets/donuts/donut_rainbow.png")
+}
+
 @export var bottom_y_limit: float = 10000.0
 
 # Порог "успокоения"
@@ -34,6 +42,25 @@ func reset_state() -> void:
 	sleeping = false
 	# Теперь размораживаем тело, чтобы оно стало динамическим
 	freeze = false
+	# Устанавливаем стиль по умолчанию
+	set_style("pink")
+
+func set_style(style: String) -> void:
+	# Проверяем, что стиль существует в словаре
+	if not DONUT_TEXTURES.has(style):
+		push_error("Donut style '" + style + "' not found in DONUT_TEXTURES")
+		return
+	
+	# Получаем спрайт и устанавливаем новую текстуру
+	var sprite = $Sprite2D
+	sprite.texture = DONUT_TEXTURES[style]
+	
+	# Устанавливаем фиксированный радиус коллизии для всех пончиков
+	# Это предотвращает пробелы между пончиками разных размеров
+	var collision_shape = $CollisionShape2D
+	if collision_shape.shape is CircleShape2D:
+		var circle_shape = collision_shape.shape as CircleShape2D
+		circle_shape.radius = 35.0  # Фиксированный радиус для всех пончиков
 
 func _ready() -> void:
 	# На старте убеждаемся, что тело активно

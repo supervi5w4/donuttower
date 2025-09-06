@@ -33,3 +33,24 @@ func reset_scale() -> void:
 	"""Сбрасывает масштаб превью пончика к оригинальному размеру"""
 	if sprite != null:
 		sprite.scale = Vector2(0.16, 0.16)
+
+func set_texture(tex: Texture2D) -> void:
+	"""Устанавливает текстуру превью пончика напрямую"""
+	if sprite == null:
+		return
+	
+	# Устанавливаем новую текстуру
+	sprite.texture = tex
+
+func set_texture_by_style(style: String) -> void:
+	"""Устанавливает текстуру превью пончика по стилю"""
+	if sprite == null:
+		return
+	
+	# Проверяем, что стиль существует в словаре Donut.DONUT_TEXTURES
+	if not Donut.DONUT_TEXTURES.has(style):
+		push_error("PreviewDonut: style '" + style + "' not found in Donut.DONUT_TEXTURES")
+		return
+	
+	# Устанавливаем новую текстуру
+	sprite.texture = Donut.DONUT_TEXTURES[style]

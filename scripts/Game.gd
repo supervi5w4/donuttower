@@ -40,6 +40,8 @@ var _last_spawn_time: float = 0.0
 var _score: int = 0
 var _best: int = 0
 var _state: int = GameState.READY
+var _leaderboard_ready: bool = false
+var next_style: String = "pink"
 
 # Камера / башня
 var _cam_start_y: float = 640.0
@@ -84,6 +86,10 @@ func _ready() -> void:
 
 	# Применить сложность на старте
 	_recalc_difficulty()
+	
+	# Выбираем первый стиль и обновляем превью
+	_select_next_style()
+	_update_preview()
 
 func _process(_delta: float) -> void:
 	_cleanup_fallen()
@@ -149,6 +155,27 @@ func _cooldown_ready() -> bool:
 	var t: float = float(Time.get_ticks_msec()) / 1000.0
 	return t - _last_spawn_time >= SPAWN_COOLDOWN
 
+func _select_next_style() -> void:
+	# Получаем все доступные стили из Donut.DONUT_TEXTURES
+	var available_styles: Array[String] = []
+	for key in Donut.DONUT_TEXTURES.keys():
+		available_styles.append(key as String)
+	
+	if available_styles.is_empty():
+		next_style = "pink"
+		return
+	
+	# Выбираем случайный стиль
+	var random_index: int = randi() % available_styles.size()
+	next_style = available_styles[random_index]
+
+func _update_preview() -> void:
+	if preview != null and preview.has_method("set_texture"):
+		# Получаем текстуру по стилю и передаем напрямую
+		if Donut.DONUT_TEXTURES.has(next_style):
+			var texture: Texture2D = Donut.DONUT_TEXTURES[next_style]
+			preview.set_texture(texture)
+
 # ===== Пул пончиков =====
 func _init_donut_pool() -> void:
 	donut_pool.clear()
@@ -184,6 +211,10 @@ func _spawn_donut(world_pos: Vector2) -> void:
 	if d.has_method("reset_state"):
 		d.reset_state()
 	
+	# Устанавливаем стиль пончика
+	if d.has_method("set_style"):
+		d.set_style(next_style)
+	
 	# Затем устанавливаем позицию и дополнительные свойства
 	d.global_position = world_pos
 	d.set("bottom_y_limit", get_world_bottom_limit() + 100.0)
@@ -208,6 +239,10 @@ func _spawn_donut(world_pos: Vector2) -> void:
 	
 	# Обновляем время последнего спавна
 	_last_spawn_time = float(Time.get_ticks_msec()) / 1000.0
+	
+	# Выбираем следующий стиль и обновляем превью
+	_select_next_style()
+	_update_preview()
 
 func _take_from_pool() -> RigidBody2D:
 	if donut_pool.is_empty():
@@ -259,7 +294,7 @@ func _cleanup_fallen() -> void:
 	if active_donuts.is_empty():
 		return
 	var threshold: float = cam.position.y + VIRT_H * 2.0 if cam != null else VIRT_H * 2.0
-	var cam_y: float = cam.position.y if cam != null else 0.0
+	var _cam_y: float = cam.position.y if cam != null else 0.0
 	for d in active_donuts.duplicate():
 		if d == null or not is_instance_valid(d):
 			active_donuts.erase(d)
@@ -393,6 +428,10 @@ func _reset_game() -> void:
 	if preview != null:
 		preview.reset_scale()
 	
+	# Выбираем новый стиль и обновляем превью
+	_select_next_style()
+	_update_preview()
+	
 
 func _load_best_from_disk() -> void:
 	var cfg := ConfigFile.new()
@@ -433,6 +472,10 @@ func _setup_yandex_sdk() -> void:
 	# Подключаем сигналы от официального YandexSdk
 	YandexSdk.interstitial_ad.connect(_on_interstitial_ad)
 	YandexSdk.rewarded_ad.connect(_on_rewarded_ad)
+	YandexSdk.leaderboard_initialized.connect(_on_leaderboard_initialized)
+	
+	# Инициализируем лидерборд
+	YandexSdk.init_leaderboard()
 
 func _show_interstitial_ad() -> void:
 	"""Показывает Interstitial рекламу при Game Over"""
@@ -461,10 +504,21 @@ func _on_rewarded_ad(result: String) -> void:
 		"error":
 			print("Ошибка показа Rewarded рекламы")
 
+func _on_leaderboard_initialized() -> void:
+	"""Обработчик инициализации лидерборда"""
+	print("Game: Лидерборд инициализирован")
+	_leaderboard_ready = true
+
 # ===== Лидерборд =====
 func _submit_score_to_leaderboard() -> void:
 	"""Отправляет результат игрока в лидерборд"""
 	print("Game: Отправка результата в лидерборд: ", _score, " очков")
+	
+	# Ждем инициализации лидерборда
+	if not _leaderboard_ready:
+		print("Game: Лидерборд еще не готов, ждем инициализации...")
+		await YandexSdk.leaderboard_initialized
+		_leaderboard_ready = true
 	
 	# Проверяем авторизацию перед отправкой
 	YandexSdk.check_is_authorized()
@@ -475,6 +529,11 @@ func _submit_score_to_leaderboard() -> void:
 func _on_auth_checked(is_authorized: bool) -> void:
 	"""Обработчик проверки авторизации"""
 	print("Game: Авторизация проверена: ", is_authorized)
+	
+	# Отключаем сигнал после получения результата
+	if YandexSdk.check_auth.is_connected(_on_auth_checked):
+		YandexSdk.check_auth.disconnect(_on_auth_checked)
+	
 	if is_authorized:
 		# Отправляем результат в лидерборд
 		YandexSdk.save_leaderboard_score("donuttowerleaderboard", _score)
@@ -485,6 +544,12 @@ func _on_auth_checked(is_authorized: bool) -> void:
 
 func _load_and_show_leaderboard() -> void:
 	"""Загружает и показывает лидерборд"""
+	# Ждем инициализации лидерборда
+	if not _leaderboard_ready:
+		print("Game: Лидерборд еще не готов для загрузки, ждем инициализации...")
+		await YandexSdk.leaderboard_initialized
+		_leaderboard_ready = true
+	
 	if leaderboard_panel != null and leaderboard_panel.has_method("load_leaderboard"):
 		leaderboard_panel.load_leaderboard()
 	else:

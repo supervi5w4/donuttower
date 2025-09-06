@@ -19,6 +19,12 @@ func _ready() -> void:
 func load_leaderboard() -> void:
 	"""Загружает данные лидерборда"""
 	print("LeaderboardPanel: Загрузка лидерборда...")
+	
+	# Ждем инициализации лидерборда
+	if not YandexSdk.is_leaderboard_initialized:
+		print("LeaderboardPanel: Лидерборд еще не готов, ждем инициализации...")
+		await YandexSdk.leaderboard_initialized
+	
 	# Проверяем авторизацию перед загрузкой
 	YandexSdk.check_is_authorized()
 	# Подключаемся к сигналу проверки авторизации
@@ -28,6 +34,11 @@ func load_leaderboard() -> void:
 func _on_auth_checked_for_load(is_authorized: bool) -> void:
 	"""Обработчик проверки авторизации для загрузки лидерборда"""
 	print("LeaderboardPanel: Авторизация проверена: ", is_authorized)
+	
+	# Отключаем сигнал после получения результата
+	if YandexSdk.check_auth.is_connected(_on_auth_checked_for_load):
+		YandexSdk.check_auth.disconnect(_on_auth_checked_for_load)
+	
 	if is_authorized:
 		# Загружаем данные лидерборда
 		YandexSdk.load_leaderboard_entries("donuttowerleaderboard", true, 5, 10)
