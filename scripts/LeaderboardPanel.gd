@@ -14,7 +14,6 @@ func _ready() -> void:
 	# Находим YandexSDK в сцене
 	yandex_sdk = get_node("/root/Game/YandexSDK")
 	if yandex_sdk == null:
-		print("LeaderboardPanel: YandexSDK не найден")
 		return
 	
 	# Подключаем сигналы
@@ -33,13 +32,11 @@ func load_leaderboard() -> void:
 
 func _on_leaderboard_loaded(entries: Array) -> void:
 	"""Обработчик успешной загрузки лидерборда"""
-	print("LeaderboardPanel: получены данные лидерборда: ", entries.size(), " записей")
 	leaderboard_entries = entries
 	_display_leaderboard()
 
 func _on_leaderboard_error(error_message: String) -> void:
 	"""Обработчик ошибки загрузки лидерборда"""
-	print("LeaderboardPanel: ошибка загрузки: ", error_message)
 	_show_error(tr("ui.leaderboard.load_error"))
 
 func _display_leaderboard() -> void:

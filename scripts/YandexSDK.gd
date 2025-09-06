@@ -71,35 +71,29 @@ func _initialize_yandex_sdk() -> void:
 
 func is_sdk_ready() -> bool:
 	if not OS.has_feature("web"):
-		print("YandexSDK: не веб-платформа")
 		return false
 	
 	var js_code = "window.yandexSDKReady ? window.yandexSDKReady() : false"
 	var result = JavaScriptBridge.eval(js_code)
-	print("YandexSDK готов: ", result)
 	return result
 
 func show_interstitial() -> void:
 	"""Показывает Interstitial рекламу при Game Over (не чаще 50 сек)"""
 	if not OS.has_feature("web"):
-		print("Interstitial: не веб-платформа, пропускаем")
 		interstitial_closed.emit(false)
 		return
 	
 	# Проверяем кулдаун
 	var current_time = Time.get_ticks_msec() / 1000.0
 	if current_time - _last_interstitial_time < INTERSTITIAL_COOLDOWN:
-		print("Interstitial: кулдаун активен, пропускаем")
 		interstitial_closed.emit(false)
 		return
 	
 	# Проверяем готовность SDK
 	if not is_sdk_ready():
-		print("Interstitial: SDK не готов, пропускаем")
 		interstitial_closed.emit(false)
 		return
 	
-	print("Показываем Interstitial рекламу")
 	_last_interstitial_time = current_time
 	
 	var js_code = """
@@ -127,19 +121,16 @@ func show_interstitial() -> void:
 func show_rewarded() -> void:
 	"""Показывает Rewarded рекламу по кнопке Continue"""
 	if not OS.has_feature("web"):
-		print("Rewarded: не веб-платформа, даем награду")
 		rewarded_completed.emit()
 		rewarded_closed.emit()
 		return
 	
 	# Проверяем готовность SDK
 	if not is_sdk_ready():
-		print("Rewarded: SDK не готов, даем награду")
 		rewarded_completed.emit()
 		rewarded_closed.emit()
 		return
 	
-	print("Показываем Rewarded рекламу")
 	
 	var js_code = """
 		if (window.ysdk && window.ysdk.adv) {
@@ -173,36 +164,29 @@ func show_rewarded() -> void:
 
 # Callback функции для JavaScript
 func _on_interstitial_closed(was_shown: bool) -> void:
-	print("Interstitial закрыта, показана: ", was_shown)
 	interstitial_closed.emit(was_shown)
 
 func _on_rewarded_completed() -> void:
-	print("Rewarded реклама завершена, награда получена")
 	rewarded_completed.emit()
 
 func _on_rewarded_closed() -> void:
-	print("Rewarded реклама закрыта")
 	rewarded_closed.emit()
 
 func _on_ad_error(error_message: String) -> void:
-	print("Ошибка рекламы: ", error_message)
 	ad_error.emit(error_message)
 
 # ===== Лидерборды =====
 func submit_score(score: int) -> void:
 	"""Отправляет результат игрока в лидерборд"""
 	if not OS.has_feature("web"):
-		print("Leaderboard: не веб-платформа, пропускаем отправку результата")
 		score_submitted.emit()
 		return
 	
 	# Проверяем готовность SDK
 	if not is_sdk_ready():
-		print("Leaderboard: SDK не готов, пропускаем отправку результата")
 		score_submitted.emit()
 		return
 	
-	print("Отправляем результат в лидерборд: ", score)
 	
 	var js_code = """
 		if (window.ysdk && window.ysdk.getLeaderboards) {
@@ -226,17 +210,14 @@ func submit_score(score: int) -> void:
 func load_leaderboard() -> void:
 	"""Загружает топ-10 результатов из лидерборда"""
 	if not OS.has_feature("web"):
-		print("Leaderboard: не веб-платформа, пропускаем загрузку")
 		leaderboard_loaded.emit([])
 		return
 	
 	# Проверяем готовность SDK
 	if not is_sdk_ready():
-		print("Leaderboard: SDK не готов, пропускаем загрузку")
 		leaderboard_loaded.emit([])
 		return
 	
-	print("Загружаем лидерборд")
 	
 	var js_code = """
 		if (window.ysdk && window.ysdk.getLeaderboards) {
@@ -259,24 +240,19 @@ func load_leaderboard() -> void:
 
 # Callback функции для лидербордов
 func _on_leaderboard_loaded(entries_json: String) -> void:
-	print("Лидерборд загружен: ", entries_json)
 	var json = JSON.new()
 	var parse_result = json.parse(entries_json)
 	if parse_result == OK:
 		var entries = json.data
 		leaderboard_loaded.emit(entries)
 	else:
-		print("Ошибка парсинга лидерборда: ", json.error_string)
 		leaderboard_error.emit("Ошибка парсинга данных")
 
 func _on_leaderboard_error(error_message: String) -> void:
-	print("Ошибка лидерборда: ", error_message)
 	leaderboard_error.emit(error_message)
 
 func _on_score_submitted() -> void:
-	print("Результат успешно отправлен в лидерборд")
 	score_submitted.emit()
 
 func _on_score_submit_error(error_message: String) -> void:
-	print("Ошибка отправки результата: ", error_message)
 	score_submit_error.emit(error_message)

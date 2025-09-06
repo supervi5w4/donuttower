@@ -32,27 +32,22 @@ func _update_language_button():
 		var next_lang = language_manager.get_next_language()
 		var display_name = language_manager.get_language_display_name(next_lang)
 		language_button.text = display_name
-		print("Обновлена кнопка языка: текущий='", current_lang, "', следующий='", next_lang, "', отображение='", display_name, "'")
 
 func _update_all_texts():
 	"""Принудительно обновляет все тексты в интерфейсе"""
-	print("Обновляем тексты в StartMenu...")
-	print("Текущая локаль: ", TranslationServer.get_locale())
 	
 	# Обновляем кнопку "Начать играть"
 	var start_button = $MainContainer/StartButton
 	if start_button:
 		var new_text = tr("ui.start.button")
 		start_button.text = new_text
-		print("Обновлена кнопка: '", new_text, "' (ключ: ui.start.button)")
 	else:
-		print("Кнопка StartButton не найдена!")
+		pass
 	
 	# Обновляем описание
 	var description_label = $MainContainer/DescriptionLabel
 	if description_label:
 		var new_text = tr("ui.start.description")
 		description_label.text = new_text
-		print("Обновлено описание: '", new_text, "' (ключ: ui.start.description)")
 	else:
-		print("Label DescriptionLabel не найден!")
+		pass

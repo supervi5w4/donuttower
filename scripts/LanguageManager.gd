@@ -7,14 +7,12 @@ var current_language: String = "ru"
 var available_languages: Array[String] = ["ru", "en"]
 
 func _ready() -> void:
-	print("LanguageManager: Инициализация...")
 	# Загружаем сохраненный язык
 	_load_language_setting()
 	# Принудительно загружаем переводы
 	_load_translations()
 	# Применяем язык
 	_set_language(current_language)
-	print("LanguageManager: Инициализация завершена")
 
 func _load_translations() -> void:
 	"""Принудительно загружает файлы переводов"""
@@ -26,15 +24,13 @@ func _load_translations() -> void:
 	for translation in translations:
 		if translation:
 			TranslationServer.add_translation(translation)
-			print("Загружен перевод: ", translation.locale)
 		else:
-			print("Ошибка загрузки перевода: ", translation)
+			pass
 
 func _load_language_setting() -> void:
 	"""Загружает сохраненную настройку языка"""
 	# Принудительно устанавливаем русский язык по умолчанию
 	current_language = "ru"
-	print("Установлен язык по умолчанию: ", current_language)
 
 func _save_language_setting() -> void:
 	"""Сохраняет настройку языка"""
@@ -49,13 +45,8 @@ func _set_language(language_code: String) -> void:
 		TranslationServer.set_locale(language_code)
 		_save_language_setting()
 		language_changed.emit(language_code)
-		print("Язык изменен на: ", language_code)
-		print("Текущая локаль TranslationServer: ", TranslationServer.get_locale())
-		print("Доступные переводы: ", TranslationServer.get_loaded_locales())
-		
-		# Тестируем переводы
-		print("Тест перевода 'ui.menu.button': ", tr("ui.menu.button"))
-		print("Тест перевода 'ui.gameover.title': ", tr("ui.gameover.title"))
+	else:
+		pass
 
 func switch_language() -> void:
 	"""Переключает между доступными языками"""

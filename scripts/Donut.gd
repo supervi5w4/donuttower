@@ -45,7 +45,7 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	# Отладочная информация каждые 60 кадров (примерно раз в секунду)
 	if Engine.get_process_frames() % 60 == 0:
-		print("Donut physics - Y: ", global_position.y, " freeze: ", freeze, " sleeping: ", sleeping, " velocity: ", linear_velocity.length())
+		pass
 	_check_missed()
 	_check_settle(delta)
 
@@ -53,7 +53,6 @@ func _check_missed() -> void:
 	if _missed_emitted:
 		return
 	if global_position.y > bottom_y_limit:
-		print("Donut missed! Y: ", global_position.y, " limit: ", bottom_y_limit)
 		_missed_emitted = true
 		emit_signal("missed")
 
@@ -69,7 +68,6 @@ func _check_settle(delta: float) -> void:
 	if below_linear and below_angular:
 		_settle_timer += delta
 		if _settle_timer >= settle_time_required:
-			print("Donut settled! Y: ", global_position.y, " timer: ", _settle_timer)
 			# Заморозим как статик, чтобы башня не "ползла"
 			freeze_mode = RigidBody2D.FREEZE_MODE_STATIC
 			freeze = true

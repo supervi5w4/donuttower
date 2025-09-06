@@ -97,58 +97,38 @@ func _notification(what: int) -> void:
 
 # ===== Ввод =====
 func _input(event: InputEvent) -> void:
-	print("Input event received: ", event)
 	if event is InputEventScreenTouch and event.pressed:
-		print("Screen touch detected")
 		_on_tap(event.position)
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		print("Mouse button detected")
 		_on_tap(event.position)
 
 func _unhandled_input(event: InputEvent) -> void:
-	print("Unhandled input event received: ", event)
 	if event is InputEventScreenTouch and event.pressed:
-		print("Unhandled screen touch detected")
 		_on_tap(event.position)
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		print("Unhandled mouse button detected")
 		_on_tap(event.position)
 
 func _on_tap(_pos: Vector2) -> void:
-	print("=== TAP EVENT ===")
-	print("Tap detected at: ", _pos, " State: ", _state)
-	@warning_ignore("incompatible_ternary")
-	print("Game over panel visible: ", game_over_panel.visible if game_over_panel != null else "null")
-	print("Cooldown ready: ", _cooldown_ready())
 	
 	if _state == GameState.READY:
-		print("Starting game...")
 		_start_game()
 		return
 	if _state != GameState.PLAY:
-		print("Game not in PLAY state: ", _state)
 		return
 	if game_over_panel.visible:
-		print("Game over panel is visible, blocking spawn")
 		return
 	if not _cooldown_ready():
-		print("Cooldown not ready")
 		return
 	var spawn_pos: Vector2
 	if spawner != null:
 		spawn_pos = spawner.get_spawn_position()
-		print("Spawner position: ", spawn_pos)
 	else:
-		print("ERROR: spawner is null, using fallback position")
 		spawn_pos = Vector2(VIRT_W * 0.5, 120.0)
-	print("Spawning donut at: ", spawn_pos)
 	if preview != null:
-		print("Calling preview.flash_drop()...")
 		preview.flash_drop()
 	else:
-		print("ERROR: preview is null, cannot call flash_drop()")
+		pass
 	_spawn_donut(spawn_pos)
-	print("=== END TAP EVENT ===")
 
 func _start_game() -> void:
 	_state = GameState.PLAY
@@ -161,7 +141,6 @@ func _start_game() -> void:
 	if spawner != null:
 		spawn_pos = spawner.get_spawn_position()
 	else:
-		print("ERROR: spawner is null, using fallback position")
 		spawn_pos = Vector2(VIRT_W * 0.5, 120.0)
 	_spawn_donut(spawn_pos)
 	_last_spawn_time = float(Time.get_ticks_msec()) / 1000.0
@@ -187,24 +166,19 @@ func _init_donut_pool() -> void:
 		donut_pool.append(d)
 
 func _spawn_donut(world_pos: Vector2) -> void:
-	print("_spawn_donut called with position: ", world_pos, " Game state: ", _state)
 	var d: RigidBody2D = _take_from_pool()
 	if d == null:
-		print("No donut in pool, creating new one")
 		var node: Node = DONUT_SCENE.instantiate()
 		d = node as RigidBody2D
 		if d == null:
-			print("ERROR: Donut scene root is not RigidBody2D!")
 			if node != null:
 				node.free()
 			return
 		add_child(d)
-		print("New donut created and added to scene")
 	else:
-		print("Reusing donut from pool")
+		pass
 	
 	d.visible = true
-	print("Donut visibility set to true")
 
 	# Сначала сбрасываем внутреннее состояние пончика
 	if d.has_method("reset_state"):
@@ -234,8 +208,6 @@ func _spawn_donut(world_pos: Vector2) -> void:
 	
 	# Обновляем время последнего спавна
 	_last_spawn_time = float(Time.get_ticks_msec()) / 1000.0
-	print("Donut spawned successfully! Active donuts: ", active_donuts.size())
-	print("Donut physics state - freeze: ", d.freeze, " sleeping: ", d.sleeping, " freeze_mode: ", d.freeze_mode)
 
 func _take_from_pool() -> RigidBody2D:
 	if donut_pool.is_empty():
@@ -251,13 +223,11 @@ func _take_from_pool() -> RigidBody2D:
 
 func _recycle_donut(d: RigidBody2D) -> void:
 	if d == null or not is_instance_valid(d):
-		print("Cannot recycle invalid donut")
 		return
 	if active_donuts.has(d):
-		print("Recycling donut from active list")
 		active_donuts.erase(d)
 	else:
-		print("Recycling donut not in active list")
+		pass
 	
 	# Очистка сигналов перед переработкой
 	_reset_donut_signals(d)
@@ -268,7 +238,6 @@ func _recycle_donut(d: RigidBody2D) -> void:
 	
 	_sleep_and_hide(d)
 	donut_pool.append(d)
-	print("Donut recycled. Active donuts: ", active_donuts.size())
 
 func _sleep_and_hide(d: RigidBody2D) -> void:
 	if d == null or not is_instance_valid(d):
@@ -291,15 +260,11 @@ func _cleanup_fallen() -> void:
 		return
 	var threshold: float = cam.position.y + VIRT_H * 2.0 if cam != null else VIRT_H * 2.0
 	var cam_y: float = cam.position.y if cam != null else 0.0
-	print("Cleanup threshold: ", threshold, " Camera Y: ", cam_y)
 	for d in active_donuts.duplicate():
 		if d == null or not is_instance_valid(d):
-			print("Removing invalid donut")
 			active_donuts.erase(d)
 			continue
-		print("Donut at Y: ", d.global_position.y, " threshold: ", threshold)
 		if d.global_position.y > threshold:
-			print("Recycling fallen donut at Y: ", d.global_position.y)
 			_recycle_donut(d)
 
 func _reset_donut_signals(d: RigidBody2D) -> void:
@@ -328,27 +293,21 @@ func _apply_camera_limits() -> void:
 func _on_donut_settled(donut_obj: Object) -> void:
 	var d: RigidBody2D = donut_obj as RigidBody2D
 	if d == null or not is_instance_valid(d):
-		print("Invalid donut in settled signal")
 		return
-	print("=== DONUT SETTLED ===")
-	print("Donut settled at Y: ", d.global_position.y)
-	print("Current score before: ", _score)
 	# Счёт
 	_score += 1
-	print("Current score after: ", _score)
 	_update_score_label()
 	# Вершина башни — минимальное Y "замерших" тел
 	_tower_top_y = min(_tower_top_y, d.global_position.y)
 	# Пересчитать сложность
 	_recalc_difficulty()
-	print("=== END DONUT SETTLED ===")
 
 func _on_donut_missed(donut_obj: Object) -> void:
 	var d: RigidBody2D = donut_obj as RigidBody2D
 	if d != null and is_instance_valid(d):
-		print("Donut missed at Y: ", d.global_position.y, " bottom_limit: ", d.get("bottom_y_limit"))
+		pass
 	else:
-		print("Invalid donut in missed signal")
+		pass
 	_set_game_over()
 
 # ===== Сложность: скорость каретки и запас камеры =====
@@ -401,8 +360,6 @@ func _on_restart_pressed() -> void:
 
 
 func _reset_game() -> void:
-	print("=== RESETTING GAME ===")
-	print("Before reset - Active donuts: ", active_donuts.size(), " Pool size: ", donut_pool.size())
 	
 	# Полная очистка всех активных пончиков
 	for d in active_donuts.duplicate():
@@ -436,9 +393,6 @@ func _reset_game() -> void:
 	if preview != null:
 		preview.reset_scale()
 	
-	print("After reset - Active donuts: ", active_donuts.size(), " Pool size: ", donut_pool.size())
-	print("Game state set to: ", _state)
-	print("=== GAME RESET COMPLETE ===")
 
 func _load_best_from_disk() -> void:
 	var cfg := ConfigFile.new()
@@ -477,7 +431,6 @@ func _hide_game_over() -> void:
 # ===== Яндекс SDK и реклама =====
 func _setup_yandex_sdk() -> void:
 	if yandex_sdk == null:
-		print("YandexSDK node not found")
 		return
 	
 	# Подключаем сигналы от YandexSDK
@@ -489,48 +442,41 @@ func _setup_yandex_sdk() -> void:
 func _show_interstitial_ad() -> void:
 	"""Показывает Interstitial рекламу при Game Over"""
 	if yandex_sdk != null:
-		print("Показываем Interstitial рекламу")
 		yandex_sdk.show_interstitial()
 	else:
-		print("YandexSDK недоступен, пропускаем Interstitial")
+		pass
 
 
 func _on_interstitial_closed(was_shown: bool) -> void:
 	"""Обработчик закрытия Interstitial рекламы"""
-	print("Interstitial реклама закрыта, показана: ", was_shown)
 	# Никаких дополнительных действий не требуется
 
 
 
 func _on_ad_error(error_message: String) -> void:
 	"""Обработчик ошибок рекламы"""
-	print("Ошибка рекламы: ", error_message)
 	# При ошибке рекламы ничего не делаем
 
 # ===== Лидерборд =====
 func _submit_score_to_leaderboard() -> void:
 	"""Отправляет результат игрока в лидерборд"""
 	if yandex_sdk != null:
-		print("Отправляем результат в лидерборд: ", _score)
 		yandex_sdk.submit_score(_score)
 	else:
-		print("YandexSDK недоступен, пропускаем отправку результата")
+		pass
 
 func _load_and_show_leaderboard() -> void:
 	"""Загружает и показывает лидерборд"""
 	if leaderboard_panel != null and leaderboard_panel.has_method("load_leaderboard"):
-		print("Загружаем лидерборд")
 		leaderboard_panel.load_leaderboard()
 	else:
-		print("LeaderboardPanel недоступен")
+		pass
 
 func _on_score_submitted() -> void:
 	"""Обработчик успешной отправки результата"""
-	print("Результат успешно отправлен в лидерборд")
 
 func _on_score_submit_error(error_message: String) -> void:
 	"""Обработчик ошибки отправки результата"""
-	print("Ошибка отправки результата в лидерборд: ", error_message)
 
 # ===== Таймер задержки рекламы =====
 func _setup_ad_delay_timer() -> void:
@@ -544,18 +490,15 @@ func _setup_ad_delay_timer() -> void:
 func _start_ad_delay_timer() -> void:
 	"""Запускает таймер для показа рекламы"""
 	if _ad_delay_timer != null:
-		print("Запускаем таймер показа рекламы (3 секунды)")
 		_ad_delay_timer.start()
 
 func _on_ad_delay_timeout() -> void:
 	"""Обработчик срабатывания таймера - показываем рекламу"""
-	print("Таймер рекламы сработал, показываем Interstitial")
 	_show_interstitial_ad()
 
 func _stop_ad_delay_timer() -> void:
 	"""Останавливает таймер показа рекламы"""
 	if _ad_delay_timer != null and _ad_delay_timer.time_left > 0:
-		print("Останавливаем таймер показа рекламы")
 		_ad_delay_timer.stop()
 
 # ===== Управление языками =====
@@ -563,6 +506,10 @@ func _setup_language_manager() -> void:
 	"""Настраивает обработчик смены языка"""
 	if LanguageManager:
 		LanguageManager.language_changed.connect(_on_language_changed)
+		# Обновляем UI тексты сразу после подключения к сигналу
+		_update_all_ui_texts()
+		_update_score_label()
+		_update_game_over_score()
 
 func _on_language_changed(_language_code: String) -> void:
 	"""Обработчик смены языка - обновляем все тексты"""
@@ -572,14 +519,11 @@ func _on_language_changed(_language_code: String) -> void:
 
 func _update_all_ui_texts() -> void:
 	"""Обновляет все тексты в игровом интерфейсе"""
-	print("Обновляем тексты в Game...")
 	# Обновляем кнопку меню
 	if menu_button:
 		menu_button.text = tr("ui.menu.button")
-		print("Обновлена кнопка меню: '", tr("ui.menu.button"), "'")
 	
 	# Обновляем заголовок Game Over
 	var game_over_label = get_node("UI/UIRoot/GameOverPanel/MainContainer/GameOverLabel")
 	if game_over_label:
 		game_over_label.text = tr("ui.gameover.title")
-		print("Обновлен заголовок Game Over: '", tr("ui.gameover.title"), "'")
