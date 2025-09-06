@@ -13,6 +13,10 @@ func _ready() -> void:
 	# Подключаем сигналы от официального YandexSdk
 	YandexSdk.leaderboard_entries_loaded.connect(_on_leaderboard_entries_loaded)
 	
+	# Подключаем сигнал смены языка
+	if LanguageManager:
+		LanguageManager.language_changed.connect(_on_language_changed)
+	
 	# Настраиваем начальное состояние
 	_show_loading()
 
@@ -173,3 +177,18 @@ func _hide_all_states() -> void:
 func _show_leaderboard() -> void:
 	"""Показывает таблицу результатов"""
 	leaderboard_container.visible = true
+
+func _on_language_changed(_language_code: String) -> void:
+	"""Обработчик смены языка - обновляем тексты"""
+	_update_ui_texts()
+
+func _update_ui_texts() -> void:
+	"""Обновляет тексты интерфейса при смене языка"""
+	if title_label:
+		title_label.text = tr("ui.leaderboard.title")
+	if loading_label:
+		loading_label.text = tr("ui.leaderboard.loading")
+	if error_label:
+		# Обновляем текст ошибки только если он отображается
+		if error_label.visible:
+			error_label.text = tr("ui.leaderboard.error")

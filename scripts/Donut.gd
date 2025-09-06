@@ -62,6 +62,21 @@ func set_style(style: String) -> void:
 		var circle_shape = collision_shape.shape as CircleShape2D
 		circle_shape.radius = 35.0  # Фиксированный радиус для всех пончиков
 
+func get_radius() -> float:
+	var cs := $CollisionShape2D
+	if cs and cs.shape is CircleShape2D:
+		return (cs.shape as CircleShape2D).radius
+	return 0.0
+
+func get_style() -> String:
+	var sprite = $Sprite2D
+	if sprite and sprite.texture:
+		# Ищем стиль по текстуре
+		for style in DONUT_TEXTURES.keys():
+			if DONUT_TEXTURES[style] == sprite.texture:
+				return style
+	return "pink"  # стиль по умолчанию
+
 func _ready() -> void:
 	# На старте убеждаемся, что тело активно
 	freeze_mode = RigidBody2D.FREEZE_MODE_STATIC

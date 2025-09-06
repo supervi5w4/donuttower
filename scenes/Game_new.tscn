@@ -1,0 +1,263 @@
+[gd_scene load_steps=13 format=3 uid="uid://cq03irpslm0xv"]
+
+[ext_resource type="Script" uid="uid://byv6i8g71nd1c" path="res://scripts/Game.gd" id="1_qbsmt"]
+[ext_resource type="PackedScene" uid="uid://cqtbisskdn4xt" path="res://scenes/spawner.tscn" id="2_cpr0p"]
+[ext_resource type="Texture2D" uid="uid://cxonxat8jv4ng" path="res://assets/bg/bg_gradient_720x1280.png" id="3_cpr0p"]
+[ext_resource type="Script" uid="uid://c3jvrg1auyltl" path="res://scripts/LeaderboardPanel.gd" id="4_leaderboard"]
+[ext_resource type="Script" path="res://addons/i18n/i18n_node.gd" id="5_i18n"]
+[ext_resource type="Script" path="res://addons/i18n/i18n_node.gd" id="6_i18n"]
+[ext_resource type="Script" path="res://addons/i18n/i18n_node.gd" id="7_i18n"]
+[ext_resource type="Script" path="res://addons/i18n/i18n_node.gd" id="8_i18n"]
+[ext_resource type="Script" path="res://addons/i18n/i18n_node.gd" id="9_i18n"]
+[ext_resource type="Script" path="res://addons/i18n/i18n_node.gd" id="10_i18n"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_uwrxv"]
+size = Vector2(720, 132)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_score_label"]
+bg_color = Color(1, 0.7, 0.3, 0.9)
+corner_radius_top_left = 20
+corner_radius_top_right = 20
+corner_radius_bottom_right = 20
+corner_radius_bottom_left = 20
+shadow_color = Color(0, 0, 0, 0.4)
+shadow_size = 6
+shadow_offset = Vector2(0, 3)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_hover"]
+bg_color = Color(1, 0.8, 0.4, 1)
+corner_radius_top_left = 25
+corner_radius_top_right = 25
+corner_radius_bottom_right = 25
+corner_radius_bottom_left = 25
+shadow_color = Color(0, 0, 0, 0.4)
+shadow_size = 10
+shadow_offset = Vector2(0, 5)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button"]
+bg_color = Color(1, 0.6, 0.2, 1)
+corner_radius_top_left = 25
+corner_radius_top_right = 25
+corner_radius_bottom_right = 25
+corner_radius_bottom_left = 25
+shadow_color = Color(0, 0, 0, 0.3)
+shadow_size = 8
+shadow_offset = Vector2(0, 4)
+
+[node name="Game" type="Node2D"]
+script = ExtResource("1_qbsmt")
+
+[node name="Ground" type="StaticBody2D" parent="."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Ground"]
+position = Vector2(360, 1214)
+shape = SubResource("RectangleShape2D_uwrxv")
+
+[node name="Spawner" parent="." instance=ExtResource("2_cpr0p")]
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="UIRoot" type="Control" parent="UI"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ScoreLabel" type="Label" parent="UI/UIRoot"]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -180.0
+offset_top = 20.0
+offset_right = 180.0
+offset_bottom = 90.0
+grow_horizontal = 2
+mouse_filter = 0
+theme_override_colors/font_color = Color(0.2, 0.1, 0.05, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.6)
+theme_override_font_sizes/font_size = 28
+theme_override_styles/normal = SubResource("StyleBoxFlat_score_label")
+text = "0"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="GameOverPanel" type="Control" parent="UI/UIRoot"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Background" type="ColorRect" parent="UI/UIRoot/GameOverPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.7)
+
+[node name="MainContainer" type="VBoxContainer" parent="UI/UIRoot/GameOverPanel"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -100.0
+offset_right = 200.0
+offset_bottom = 100.0
+grow_horizontal = 2
+grow_vertical = 2
+alignment = 1
+
+[node name="GameOverLabel" type="Label" parent="UI/UIRoot/GameOverPanel/MainContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.8)
+theme_override_font_sizes/font_size = 32
+text = "Игра окончена!"
+horizontal_alignment = 1
+vertical_alignment = 1
+script = ExtResource("5_i18n")
+translation_key = "ui.gameover.title"
+
+[node name="ScoreLabel" type="Label" parent="UI/UIRoot/GameOverPanel/MainContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.8, 0.2, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.8)
+theme_override_font_sizes/font_size = 24
+text = "Ваш результат: 0"
+horizontal_alignment = 1
+vertical_alignment = 1
+script = ExtResource("6_i18n")
+translation_key = "ui.gameover.your_score"
+
+[node name="LeaderboardPanel" type="Control" parent="UI/UIRoot/GameOverPanel/MainContainer"]
+custom_minimum_size = Vector2(400, 300)
+layout_mode = 2
+script = ExtResource("4_leaderboard")
+
+[node name="Background" type="ColorRect" parent="UI/UIRoot/GameOverPanel/MainContainer/LeaderboardPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.3)
+
+[node name="TitleLabel" type="Label" parent="UI/UIRoot/GameOverPanel/MainContainer/LeaderboardPanel"]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -100.0
+offset_top = 10.0
+offset_right = 100.0
+offset_bottom = 40.0
+grow_horizontal = 2
+theme_override_colors/font_color = Color(1, 0.8, 0.2, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.8)
+theme_override_font_sizes/font_size = 20
+text = "Лучшие результаты"
+horizontal_alignment = 1
+vertical_alignment = 1
+script = ExtResource("7_i18n")
+translation_key = "ui.leaderboard.title"
+
+[node name="LoadingLabel" type="Label" parent="UI/UIRoot/GameOverPanel/MainContainer/LeaderboardPanel"]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -100.0
+offset_top = -20.0
+offset_right = 100.0
+offset_bottom = 20.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.8)
+theme_override_font_sizes/font_size = 16
+text = "Загрузка..."
+horizontal_alignment = 1
+vertical_alignment = 1
+script = ExtResource("8_i18n")
+translation_key = "ui.leaderboard.loading"
+
+[node name="ErrorLabel" type="Label" parent="UI/UIRoot/GameOverPanel/MainContainer/LeaderboardPanel"]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -150.0
+offset_top = -20.0
+offset_right = 150.0
+offset_bottom = 20.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(1, 0.6, 0.2, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.8)
+theme_override_font_sizes/font_size = 16
+text = "Ошибка загрузки"
+horizontal_alignment = 1
+vertical_alignment = 1
+script = ExtResource("9_i18n")
+translation_key = "ui.leaderboard.error"
+
+[node name="LeaderboardContainer" type="VBoxContainer" parent="UI/UIRoot/GameOverPanel/MainContainer/LeaderboardPanel"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = 50.0
+offset_right = -20.0
+offset_bottom = -20.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MenuButton" type="Button" parent="UI/UIRoot/GameOverPanel/MainContainer"]
+custom_minimum_size = Vector2(300, 80)
+layout_mode = 2
+theme_override_colors/font_hover_color = Color(0.2, 0.1, 0.05, 1)
+theme_override_colors/font_color = Color(0.2, 0.1, 0.05, 1)
+theme_override_colors/font_pressed_color = Color(0.2, 0.1, 0.05, 1)
+theme_override_font_sizes/font_size = 24
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button")
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+text = "Меню"
+script = ExtResource("10_i18n")
+translation_key = "ui.menu.button"
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(360, 640)
+limit_left = 0
+limit_top = -100000
+limit_right = 720
+limit_bottom = 1280
+limit_smoothed = true
+position_smoothing_enabled = true
+position_smoothing_speed = 8.0
+
+[node name="Background" type="Sprite2D" parent="."]
+z_index = -100
+position = Vector2(360, 640)
+texture = ExtResource("3_cpr0p")
+
+[connection signal="pressed" from="UI/UIRoot/GameOverPanel/MainContainer/MenuButton" to="." method="_on_restart_pressed"]

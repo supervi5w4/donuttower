@@ -13,6 +13,9 @@ const POOL_SIZE := 24
 const SPAWN_COOLDOWN := 0.08
 const DONUT_SCENE := preload("res://scenes/Donut.tscn")
 
+# Базовый уровень пола для пересчёта вершины башни
+const _floor_y := 1200.0
+
 const SAVE_PATH := "user://save.cfg"
 const SAVE_SECTION := "stats"
 const SAVE_KEY_BEST := "best"
@@ -35,9 +38,11 @@ var _ad_delay_timer: Timer
 
 var donut_pool: Array[RigidBody2D] = []
 var active_donuts: Array[RigidBody2D] = []
+var donuts: Array[Donut] = []
 
 var _last_spawn_time: float = 0.0
-var _score: int = 0
+var score: int = 0
+var combo_lock: bool = false
 var _best: int = 0
 var _state: int = GameState.READY
 var _leaderboard_ready: bool = false
@@ -222,10 +227,10 @@ func _spawn_donut(world_pos: Vector2) -> void:
 	d.set_physics_process(true)
 
 	# Стабильность верхних пончиков по мере роста счёта
-	var damp: float = clamp(DAMP_BASE + float(_score) * DAMP_SCORE_RATE, DAMP_BASE, DAMP_MAX)
+	var damp: float = clamp(DAMP_BASE + float(score) * DAMP_SCORE_RATE, DAMP_BASE, DAMP_MAX)
 	d.angular_damp = damp
-	var lin_thr: float = clamp(SETTLE_LIN_BASE + float(_score) * SETTLE_RATE, SETTLE_LIN_BASE, SETTLE_LIN_MAX)
-	var ang_thr: float = clamp(SETTLE_ANG_BASE + float(_score) * SETTLE_ANG_RATE, SETTLE_ANG_BASE, SETTLE_ANG_MAX)
+	var lin_thr: float = clamp(SETTLE_LIN_BASE + float(score) * SETTLE_RATE, SETTLE_LIN_BASE, SETTLE_LIN_MAX)
+	var ang_thr: float = clamp(SETTLE_ANG_BASE + float(score) * SETTLE_ANG_RATE, SETTLE_ANG_BASE, SETTLE_ANG_MAX)
 	d.set("settle_linear_speed_threshold", lin_thr)
 	d.set("settle_angular_speed_threshold", ang_thr)
 
@@ -236,6 +241,7 @@ func _spawn_donut(world_pos: Vector2) -> void:
 	d.connect("missed", Callable(self, "_on_donut_missed").bind(donut_obj))
 
 	active_donuts.append(d)
+	donuts.append(d as Donut)
 	
 	# Обновляем время последнего спавна
 	_last_spawn_time = float(Time.get_ticks_msec()) / 1000.0
@@ -263,14 +269,15 @@ func _recycle_donut(d: RigidBody2D) -> void:
 		active_donuts.erase(d)
 	else:
 		pass
-	
-	# Очистка сигналов перед переработкой
+
+	var donut_inst: Donut = d as Donut
+	if donut_inst != null and donuts.has(donut_inst):
+		donuts.erase(donut_inst)
+
 	_reset_donut_signals(d)
-	
-	# Сброс внутреннего состояния пончика
 	if d.has_method("reset_state"):
 		d.reset_state()
-	
+
 	_sleep_and_hide(d)
 	donut_pool.append(d)
 
@@ -293,14 +300,18 @@ func _sleep_and_hide(d: RigidBody2D) -> void:
 func _cleanup_fallen() -> void:
 	if active_donuts.is_empty():
 		return
+	donuts = donuts.filter(func(x): return is_instance_valid(x))
 	var threshold: float = cam.position.y + VIRT_H * 2.0 if cam != null else VIRT_H * 2.0
 	var _cam_y: float = cam.position.y if cam != null else 0.0
-	for d in active_donuts.duplicate():
-		if d == null or not is_instance_valid(d):
-			active_donuts.erase(d)
-			continue
-		if d.global_position.y > threshold:
-			_recycle_donut(d)
+	
+	# Создаём новый массив только с валидными объектами
+	var valid_donuts: Array[RigidBody2D] = []
+	for d in active_donuts:
+		if d != null and is_instance_valid(d):
+			valid_donuts.append(d)
+			if d.global_position.y > threshold:
+				_recycle_donut(d)
+	active_donuts = valid_donuts
 
 func _reset_donut_signals(d: RigidBody2D) -> void:
 	for c in d.get_signal_connection_list("settled"):
@@ -318,23 +329,34 @@ func _apply_camera_limits() -> void:
 	cam.limit_bottom = int(VIRT_H)
 
 # func _update_camera_follow() -> void:
-# 	if cam == null:
-# 		return
-# 	# Цель — держать вершину башни с запасом _cam_margin
-# 	var target_y: float = min(_cam_start_y, _tower_top_y - _cam_margin)
-# 	if target_y < cam.position.y:
-# 		cam.position.y = target_y
+#     if cam == null:
+#         return
+#     # Цель — держать вершину башни с запасом _cam_margin
+#     var target_y: float = min(_cam_start_y, _tower_top_y - _cam_margin)
+#     if target_y < cam.position.y:
+#         cam.position.y = target_y
 
 func _on_donut_settled(donut_obj: Object) -> void:
-	var d: RigidBody2D = donut_obj as RigidBody2D
+	var d := donut_obj as RigidBody2D
 	if d == null or not is_instance_valid(d):
 		return
-	# Счёт
-	_score += 1
+
+	score += 1
 	_update_score_label()
-	# Вершина башни — минимальное Y "замерших" тел
-	_tower_top_y = min(_tower_top_y, d.global_position.y)
-	# Пересчитать сложность
+
+	# сохраняем Y до await (после await d может быть удалён)
+	var y_before := d.global_position.y
+
+	# пусть check_touch_chain() вернёт true, если что‑то удалялось
+	var removed_any := await check_touch_chain()
+
+	# обновляем вершину башни
+	if removed_any:
+		_recompute_tower_top_y()
+	else:
+		# d всё ещё может пропасть по другим причинам — подстрахуемся
+		_tower_top_y = min(_tower_top_y, y_before)
+
 	_recalc_difficulty()
 
 func _on_donut_missed(donut_obj: Object) -> void:
@@ -348,14 +370,14 @@ func _on_donut_missed(donut_obj: Object) -> void:
 # ===== Сложность: скорость каретки и запас камеры =====
 func _recalc_difficulty() -> void:
 	# Скорость каретки: base * clamp(1 + score*rate, 1, MAX_FACTOR)
-	var factor: float = 1.0 + float(_score) * SPAWNER_SCORE_RATE
+	var factor: float = 1.0 + float(score) * SPAWNER_SCORE_RATE
 	if factor > SPAWNER_MAX_FACTOR:
 		factor = SPAWNER_MAX_FACTOR
 	if spawner != null:
 		spawner.speed = SPAWNER_BASE_SPEED * factor
 
 	# Запас камеры: линейная интерполяция от MIN к MAX к ~20 очкам
-	var t: float = float(_score)
+	var t: float = float(score)
 	if t > float(CAM_MARGIN_SCORE_CAP):
 		t = float(CAM_MARGIN_SCORE_CAP)
 	var k: float = t / float(CAM_MARGIN_SCORE_CAP) # 0..1
@@ -369,8 +391,8 @@ func _set_game_over() -> void:
 	_state = GameState.GAMEOVER
 	
 	# Проверяем, побит ли рекорд
-	if _score > _best:
-		_best = _score
+	if score > _best:
+		_best = score
 		_save_best_to_disk()
 	
 	# Обновляем отображение очков
@@ -410,7 +432,7 @@ func _reset_game() -> void:
 				d.reset_state()
 	
 	# Сброс игровых переменных
-	_score = 0
+	score = 0
 	_last_spawn_time = 0.0
 	_state = GameState.READY
 	_update_score_label()
@@ -454,12 +476,12 @@ func get_world_bottom_limit() -> float:
 
 func _update_score_label() -> void:
 	if score_label:
-		score_label.text = tr("ui.hud.score") + ": " + str(_score)
+		score_label.text = tr("ui.hud.score") + ": " + str(score)
 
 func _update_game_over_score() -> void:
 	"""Обновляет отображение счета в GameOverPanel"""
 	if game_over_score_label:
-		game_over_score_label.text = tr("ui.gameover.your_score") + ": " + str(_score)
+		game_over_score_label.text = tr("ui.gameover.your_score") + ": " + str(score)
 
 func _show_game_over() -> void:
 	game_over_panel.visible = true
@@ -474,7 +496,20 @@ func _setup_yandex_sdk() -> void:
 	YandexSdk.rewarded_ad.connect(_on_rewarded_ad)
 	YandexSdk.leaderboard_initialized.connect(_on_leaderboard_initialized)
 	
-	# Инициализируем лидерборд
+	# Запускаем асинхронную инициализацию
+	_initialize_yandex_sdk_async()
+
+func _initialize_yandex_sdk_async() -> void:
+	"""Асинхронная инициализация YandexSdk"""
+	# Сначала инициализируем игру, затем лидерборд
+	if not YandexSdk.is_game_initialized:
+		print("Game: Инициализируем YandexSdk игру...")
+		YandexSdk.init_game()
+		await YandexSdk.game_initialized
+		print("Game: YandexSdk игра инициализирована")
+	
+	# Теперь инициализируем лидерборд
+	print("Game: Инициализируем лидерборд...")
 	YandexSdk.init_leaderboard()
 
 func _show_interstitial_ad() -> void:
@@ -507,17 +542,25 @@ func _on_rewarded_ad(result: String) -> void:
 func _on_leaderboard_initialized() -> void:
 	"""Обработчик инициализации лидерборда"""
 	print("Game: Лидерборд инициализирован")
+	print("Game: YandexSdk.is_leaderboard_initialized = ", YandexSdk.is_leaderboard_initialized)
 	_leaderboard_ready = true
 
 # ===== Лидерборд =====
 func _submit_score_to_leaderboard() -> void:
 	"""Отправляет результат игрока в лидерборд"""
-	print("Game: Отправка результата в лидерборд: ", _score, " очков")
+	print("Game: Отправка результата в лидерборд: ", score, " очков")
+	
+	# Проверяем, что мы на веб-платформе
+	if not OS.has_feature("yandex"):
+		print("Game: Не веб-платформа, лидерборд недоступен")
+		return
 	
 	# Ждем инициализации лидерборда
-	if not _leaderboard_ready:
+	if not _leaderboard_ready and not YandexSdk.is_leaderboard_initialized:
 		print("Game: Лидерборд еще не готов, ждем инициализации...")
 		await YandexSdk.leaderboard_initialized
+		_leaderboard_ready = true
+	elif YandexSdk.is_leaderboard_initialized:
 		_leaderboard_ready = true
 	
 	# Проверяем авторизацию перед отправкой
@@ -536,7 +579,7 @@ func _on_auth_checked(is_authorized: bool) -> void:
 	
 	if is_authorized:
 		# Отправляем результат в лидерборд
-		YandexSdk.save_leaderboard_score("donuttowerleaderboard", _score)
+		YandexSdk.save_leaderboard_score("donuttowerleaderboard", score)
 	else:
 		print("Game: Пользователь не авторизован, результат не отправлен в лидерборд")
 		# Можно предложить авторизацию
@@ -544,16 +587,23 @@ func _on_auth_checked(is_authorized: bool) -> void:
 
 func _load_and_show_leaderboard() -> void:
 	"""Загружает и показывает лидерборд"""
+	# Проверяем, что мы на веб-платформе
+	if not OS.has_feature("yandex"):
+		print("Game: Не веб-платформа, лидерборд недоступен")
+		return
+	
 	# Ждем инициализации лидерборда
-	if not _leaderboard_ready:
+	if not _leaderboard_ready and not YandexSdk.is_leaderboard_initialized:
 		print("Game: Лидерборд еще не готов для загрузки, ждем инициализации...")
 		await YandexSdk.leaderboard_initialized
+		_leaderboard_ready = true
+	elif YandexSdk.is_leaderboard_initialized:
 		_leaderboard_ready = true
 	
 	if leaderboard_panel != null and leaderboard_panel.has_method("load_leaderboard"):
 		leaderboard_panel.load_leaderboard()
 	else:
-		pass
+		print("Game: LeaderboardPanel не найден или не имеет метода load_leaderboard")
 
 # Обработчики для лидерборда больше не нужны, так как официальный SDK не возвращает сигналы для save_leaderboard_score
 
@@ -606,3 +656,179 @@ func _update_all_ui_texts() -> void:
 	var game_over_label = get_node("UI/UIRoot/GameOverPanel/MainContainer/GameOverLabel")
 	if game_over_label:
 		game_over_label.text = tr("ui.gameover.title")
+	
+	# Обновляем тексты лидерборда
+	_update_leaderboard_texts()
+
+func _update_leaderboard_texts() -> void:
+	"""Обновляет тексты лидерборда при смене языка"""
+	if leaderboard_panel:
+		# Обновляем заголовок лидерборда
+		var title_label = leaderboard_panel.get_node("TitleLabel")
+		if title_label:
+			title_label.text = tr("ui.leaderboard.title")
+		
+		# Обновляем текст загрузки
+		var loading_label = leaderboard_panel.get_node("LoadingLabel")
+		if loading_label:
+			loading_label.text = tr("ui.leaderboard.loading")
+		
+		# Обновляем текст ошибки
+		var error_label = leaderboard_panel.get_node("ErrorLabel")
+		if error_label:
+			error_label.text = tr("ui.leaderboard.error")
+
+func check_touch_chain() -> bool:
+	if combo_lock:
+		return false
+	donuts = donuts.filter(func(x): return is_instance_valid(x))
+	var n: int = donuts.size()
+	if n < 5:
+		return false
+	
+	# Группируем пончики по цветам
+	var donuts_by_color: Dictionary = {}
+	for i in range(n):
+		var di: Donut = donuts[i]
+		if not is_instance_valid(di):
+			continue
+		var color: String = di.get_style()
+		if not donuts_by_color.has(color):
+			donuts_by_color[color] = []
+		donuts_by_color[color].append(i)
+	
+	# Проверяем каждый цвет отдельно
+	for color in donuts_by_color.keys():
+		var color_indices: Array = donuts_by_color[color]
+		if color_indices.size() < 5:
+			continue
+		
+		# Строим граф только для пончиков этого цвета
+		var adj: Array = []
+		adj.resize(n)
+		for i in range(n):
+			adj[i] = []
+		
+		for i in color_indices:
+			var di: Donut = donuts[i]
+			if not is_instance_valid(di):
+				continue
+			for j in color_indices:
+				if i >= j:  # избегаем дублирования
+					continue
+				var dj: Donut = donuts[j]
+				if not is_instance_valid(dj):
+					continue
+				# Дополнительная проверка валидности перед обращением к свойствам
+				if not is_instance_valid(di) or not is_instance_valid(dj):
+					continue
+				var dist: float = (di.global_position - dj.global_position).length()
+				var touch: bool = dist <= (di.get_radius() + dj.get_radius()) * 1.02
+				if touch:
+					adj[i].append(j)
+					adj[j].append(i)
+		
+		# Ищем компоненты связности только среди пончиков этого цвета
+		var visited := {}
+		for i in color_indices:
+			if visited.has(i):
+				continue
+			var comp: Array = []
+			var q: Array = [i]
+			visited[i] = true
+			while not q.is_empty():
+				var v: int = q.pop_front()
+				if v < 0 or v >= n:
+					continue
+				comp.append(v)
+				for w in adj[v]:
+					if not visited.has(w):
+						visited[w] = true
+						q.append(w)
+			if comp.size() >= 5:
+				await _apply_chain_bonus_and_remove(comp)
+				return true
+	
+	return false
+
+func _update_score_ui() -> void:
+	_update_score_label()
+	_update_game_over_score()
+
+func _apply_chain_bonus_and_remove(indices: Array) -> void:
+	combo_lock = true
+	
+	# Сначала собираем все валидные объекты для анимации
+	var donuts_to_animate: Array[Donut] = []
+	for idx in indices:
+		if idx >= 0 and idx < donuts.size():
+			var d: Donut = donuts[idx]
+			if is_instance_valid(d):
+				donuts_to_animate.append(d)
+	
+	# Количество очков равно количеству удаляемых пончиков
+	var bonus_points: int = donuts_to_animate.size()
+	score += bonus_points
+	_update_score_ui()
+	
+	# Анимируем все собранные объекты
+	for d in donuts_to_animate:
+		if is_instance_valid(d):
+			var tw: Tween = create_tween()
+			tw.tween_property(d, "scale", d.scale * 0.0, 0.18)
+			await tw.finished
+			if is_instance_valid(d):
+				d.queue_free()
+	
+	# Очищаем массивы от недействительных объектов
+	donuts = donuts.filter(func(x): return is_instance_valid(x))
+	active_donuts = active_donuts.filter(func(x): return is_instance_valid(x))
+	
+	# Размораживаем пончики, которые могли потерять опору
+	_unfreeze_donuts_after_removal()
+	
+	await get_tree().process_frame
+	combo_lock = false
+
+func _recompute_tower_top_y() -> void:
+	var top := INF
+	for dn in donuts:
+		if is_instance_valid(dn) and dn.is_inside_tree() and dn.sleeping:
+			top = min(top, dn.global_position.y)
+	if top == INF:
+		top = _floor_y            # задай базовый уровень пола
+	_tower_top_y = top
+
+func _are_all_same_color(indices: Array) -> bool:
+	if indices.is_empty():
+		return false
+	
+	# Получаем цвет первого пончика
+	var first_donut: Donut = donuts[indices[0]]
+	if not is_instance_valid(first_donut):
+		return false
+	
+	var first_color: String = first_donut.get_style()
+	
+	# Проверяем, что все остальные пончики имеют тот же цвет
+	for i in range(1, indices.size()):
+		var donut: Donut = donuts[indices[i]]
+		if not is_instance_valid(donut):
+			return false
+		var donut_color: String = donut.get_style()
+		if donut_color != first_color:
+			return false
+	
+	return true
+
+func _unfreeze_donuts_after_removal() -> void:
+	# Размораживаем все "замершие" пончики, чтобы они могли упасть
+	# если потеряли опору после удаления цепочки
+	for d in donuts:
+		if is_instance_valid(d) and d.sleeping:
+			# Размораживаем пончик
+			d.freeze = false
+			d.sleeping = false
+			# Сбрасываем таймер успокоения, чтобы пончик снова начал "успокаиваться"
+			if d.has_method("_settle_reset"):
+				d._settle_reset()
