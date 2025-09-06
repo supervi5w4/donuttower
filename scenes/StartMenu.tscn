@@ -91,7 +91,7 @@ theme_override_font_sizes/font_size = 20
 theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button")
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-text = "♪"
+text = "ui.sound.on"
 
 [node name="VolumeSlider" type="HSlider" parent="MusicControls"]
 layout_mode = 2
@@ -144,4 +144,5 @@ script = ExtResource("4_i18n")
 translation_key = "ui.start.description"
 
 [connection signal="pressed" from="LanguageButton" to="." method="_on_language_button_pressed"]
+[connection signal="pressed" from="MusicControls/MuteButton" to="." method="_on_mute_button_pressed"]
 [connection signal="pressed" from="MainContainer/StartButton" to="." method="_on_start_button_pressed"]

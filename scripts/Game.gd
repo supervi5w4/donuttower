@@ -27,6 +27,7 @@ enum GameState { READY, PLAY, GAMEOVER }
 @onready var score_label: Label = get_node("UI/UIRoot/ScoreLabel")
 @onready var game_over_panel: Control = get_node("UI/UIRoot/GameOverPanel")
 @onready var game_over_score_label: Label = get_node("UI/UIRoot/GameOverPanel/MainContainer/ScoreLabel")
+@onready var player_rank_label: Label = get_node("UI/UIRoot/GameOverPanel/MainContainer/PlayerRankLabel")
 @onready var menu_button: Button = get_node("UI/UIRoot/GameOverPanel/MainContainer/MenuButton")
 @onready var leaderboard_panel: Control = get_node("UI/UIRoot/GameOverPanel/MainContainer/LeaderboardPanel")
 @onready var spawner: Spawner = get_node("Spawner")
@@ -35,6 +36,10 @@ enum GameState { READY, PLAY, GAMEOVER }
 
 # Таймер для задержки показа рекламы
 var _ad_delay_timer: Timer
+
+# Переменные для кулдауна рекламы
+var _last_ad_time: float = 0.0
+const AD_COOLDOWN := 50.0
 
 var donut_pool: Array[RigidBody2D] = []
 var active_donuts: Array[RigidBody2D] = []
@@ -415,6 +420,9 @@ func _set_game_over() -> void:
 	# Загружаем и показываем лидерборд
 	_load_and_show_leaderboard()
 	
+	# Загружаем запись игрока в лидерборде
+	_load_player_leaderboard_entry()
+	
 	# Запускаем таймер для показа рекламы через 3 секунды
 	_start_ad_delay_timer()
 
@@ -517,6 +525,13 @@ func _update_game_over_score() -> void:
 	if game_over_score_label:
 		game_over_score_label.text = tr("ui.gameover.your_score") + ": " + str(score)
 
+func _update_player_rank_display(rank_text: String) -> void:
+	"""Обновляет отображение рейтинга игрока в GameOverPanel"""
+	if player_rank_label:
+		player_rank_label.text = rank_text
+		# Скрываем label, если текст пустой
+		player_rank_label.visible = not rank_text.is_empty()
+
 func _show_game_over() -> void:
 	game_over_panel.visible = true
 
@@ -616,7 +631,32 @@ func _on_leaderboard_entries_loaded(data: Dictionary) -> void:
 func _on_leaderboard_player_entry_loaded(data: Dictionary) -> void:
 	"""Обработчик загрузки записи игрока в лидерборде"""
 	print("Game: Запись игрока в лидерборде загружена: ", data)
-	# Здесь можно обновить UI с записью игрока
+	
+	# Проверяем, что данные содержат необходимую информацию
+	if data.is_empty():
+		print("Game: Запись игрока в лидерборде отсутствует - игрок еще не участвовал в рейтинге")
+		_update_player_rank_display("")
+		return
+	
+	# Извлекаем рейтинг и лучший результат
+	var rank: int = data.get("rank", 0)
+	var score: int = data.get("score", 0)
+	
+	# Проверяем наличие ключей в данных
+	if not data.has("rank") or not data.has("score"):
+		print("Game: Неполные данные записи игрока в лидерборде")
+		_update_player_rank_display("")
+		return
+	
+	if rank > 0 and score > 0:
+		# Отображаем рейтинг и лучший результат
+		var rank_text: String = "Ваш рейтинг: #" + str(rank) + " (лучший результат: " + str(score) + ")"
+		_update_player_rank_display(rank_text)
+		print("Game: Рейтинг игрока: #", rank, ", лучший результат: ", score)
+	else:
+		# Если нет валидных данных, скрываем отображение
+		print("Game: Нет валидных данных о рейтинге игрока (rank: ", rank, ", score: ", score, ")")
+		_update_player_rank_display("")
 
 
 func _save_game_stats() -> void:
@@ -680,28 +720,50 @@ func _on_auth_checked(is_authorized: bool) -> void:
 
 func _load_and_show_leaderboard() -> void:
 	"""Загружает и показывает лидерборд"""
+	# Загружаем лидерборд через LeaderboardPanel
+	if leaderboard_panel != null and leaderboard_panel.has_method("load_leaderboard"):
+		leaderboard_panel.load_leaderboard()
+	else:
+		print("Game: LeaderboardPanel не найден или не имеет метода load_leaderboard")
+
+func _load_player_leaderboard_entry() -> void:
+	"""Загружает запись игрока в лидерборде"""
 	# Проверяем, что мы на веб-платформе
 	if not OS.has_feature("yandex"):
 		print("Game: Не веб-платформа, лидерборд недоступен")
+		_update_player_rank_display("")
 		return
 	
 	# Ждем инициализации лидерборда
 	if not _leaderboard_ready and not YandexSdk.is_leaderboard_initialized:
-		print("Game: Лидерборд еще не готов для загрузки, ждем инициализации...")
+		print("Game: Лидерборд еще не готов для загрузки записи игрока, ждем инициализации...")
 		await YandexSdk.leaderboard_initialized
 		_leaderboard_ready = true
 	elif YandexSdk.is_leaderboard_initialized:
 		_leaderboard_ready = true
 	
-	# Загружаем данные лидерборда напрямую через YandexSDK
-	print("Game: Загружаем лидерборд напрямую...")
-	YandexSdk.load_leaderboard_entries("donuttowerleaderboard", true, 5, 10)
+	# Проверяем авторизацию перед загрузкой записи игрока
+	YandexSdk.check_is_authorized()
+	# Подключаемся к сигналу проверки авторизации (отключаем предыдущие подключения)
+	if YandexSdk.check_auth.is_connected(_on_auth_checked_for_player_entry):
+		YandexSdk.check_auth.disconnect(_on_auth_checked_for_player_entry)
+	YandexSdk.check_auth.connect(_on_auth_checked_for_player_entry)
+
+func _on_auth_checked_for_player_entry(is_authorized: bool) -> void:
+	"""Обработчик проверки авторизации для загрузки записи игрока"""
+	print("Game: Авторизация для загрузки записи игрока проверена: ", is_authorized)
 	
-	# Также загружаем через LeaderboardPanel для UI
-	if leaderboard_panel != null and leaderboard_panel.has_method("load_leaderboard"):
-		leaderboard_panel.load_leaderboard()
+	# Отключаем сигнал после получения результата
+	if YandexSdk.check_auth.is_connected(_on_auth_checked_for_player_entry):
+		YandexSdk.check_auth.disconnect(_on_auth_checked_for_player_entry)
+	
+	if is_authorized:
+		# Загружаем запись игрока в лидерборде
+		print("Game: Загружаем запись игрока в лидерборде...")
+		YandexSdk.load_leaderboard_player_entry("donuttowerleaderboard")
 	else:
-		print("Game: LeaderboardPanel не найден или не имеет метода load_leaderboard")
+		print("Game: Пользователь не авторизован, запись игрока не загружена")
+		_update_player_rank_display("")
 
 # Обработчики для лидерборда больше не нужны, так как официальный SDK не возвращает сигналы для save_leaderboard_score
 
@@ -720,8 +782,18 @@ func _start_ad_delay_timer() -> void:
 		_ad_delay_timer.start()
 
 func _on_ad_delay_timeout() -> void:
-	"""Обработчик срабатывания таймера - показываем рекламу"""
-	_show_interstitial_ad()
+	"""Обработчик срабатывания таймера - показываем рекламу с проверкой кулдауна"""
+	var current_time: float = Time.get_ticks_msec() / 1000.0
+	var time_since_last_ad: float = current_time - _last_ad_time
+	
+	if time_since_last_ad >= AD_COOLDOWN:
+		# Обновляем время последнего показа рекламы
+		_last_ad_time = current_time
+		# Показываем рекламу
+		_show_interstitial_ad()
+	else:
+		# Кулдаун еще не прошел, просто сбрасываем таймер
+		print("Реклама не показана: кулдаун еще не прошел. Осталось: ", AD_COOLDOWN - time_since_last_ad, " секунд")
 
 func _stop_ad_delay_timer() -> void:
 	"""Останавливает таймер показа рекламы"""
@@ -757,6 +829,11 @@ func _update_all_ui_texts() -> void:
 	
 	# Обновляем тексты лидерборда
 	_update_leaderboard_texts()
+	
+	# Обновляем отображение рейтинга игрока (если есть данные)
+	if player_rank_label and player_rank_label.visible:
+		# Текст рейтинга уже содержит переводы, поэтому просто обновляем видимость
+		pass
 
 func _update_leaderboard_texts() -> void:
 	"""Обновляет тексты лидерборда при смене языка"""
