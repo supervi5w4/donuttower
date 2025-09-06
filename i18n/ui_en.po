@@ -43,4 +43,13 @@ msgid "ui.start.button"
 msgstr "Start Playing"
 
 msgid "ui.start.description"
-msgstr "Collect falling donuts and score points!\nControl the tower and catch as many sweets as possible.\nBe careful - dont drop the donuts!"
+msgstr "Collect donuts one by one — build a fragile tower of sweets.\nCollect a row of five identical ones — and get a tasty bonus!\nBut remember: one miss — and everything falls apart."
+
+msgid "ui.sound.on"
+msgstr "ON"
+
+msgid "ui.sound.off"
+msgstr "OFF"
+
+msgid "ui.leaderboard.auth_required"
+msgstr "Authorization required to view leaderboard"

@@ -1,7 +1,7 @@
 [gd_scene load_steps=5 format=3 uid="uid://1n6u1fqemq3l"]
 
 [ext_resource type="Script" uid="uid://fmi8utupb3j" path="res://scripts/Donut.gd" id="1_nmicr"]
-[ext_resource type="Texture2D" uid="uid://bkcjt7acgtqwb" path="res://assets/donuts/donut01.png" id="2_gq372"]
+[ext_resource type="Texture2D" path="res://assets/donuts/donut01.png" id="2_gq372"]
 
 [sub_resource type="PhysicsMaterial" id="PhysicsMaterial_yqjtg"]
 friction = 1.2
