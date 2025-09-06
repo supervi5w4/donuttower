@@ -13,7 +13,7 @@
 size = Vector2(29.1249, 39.227)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_400sg"]
-size = Vector2(8.70258, 12.8401)
+size = Vector2(12.4818, 19.1169)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_uwrxv"]
 size = Vector2(720, 132)
@@ -56,7 +56,7 @@ script = ExtResource("1_qbsmt")
 [node name="CollisionShape2D" type="CollisionShape2D" parent="LeftWall"]
 position = Vector2(660, 1114)
 rotation = 3.14159
-scale = Vector2(2.27453, -1.68885)
+scale = Vector2(3.29519, -5.8066)
 shape = SubResource("RectangleShape2D_kiw3p")
 
 [node name="Sprite2D" type="Sprite2D" parent="LeftWall"]
@@ -67,9 +67,8 @@ texture = ExtResource("2_kiw3p")
 [node name="RightWall" type="StaticBody2D" parent="."]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="RightWall"]
-position = Vector2(50, 1110)
-rotation = 3.14159
-scale = Vector2(-7.13036, 5.9857)
+position = Vector2(54.5, 1091.21)
+scale = Vector2(7.13036, -5.9857)
 shape = SubResource("RectangleShape2D_400sg")
 
 [node name="Sprite2D" type="Sprite2D" parent="RightWall"]
