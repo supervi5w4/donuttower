@@ -16,6 +16,7 @@ func _ready() -> void:
 	# Инициализируем игрока для работы с лидербордом
 	if YandexSdk:
 		YandexSdk.init_player()
+		await YandexSdk.player_initialized
 		print("StartMenu: Игрок инициализирован для лидерборда")
 	
 	# Проверяем наличие MusicManager

@@ -147,6 +147,9 @@ func _start_game() -> void:
 	# Дополнительная очистка перед началом игры
 	_cleanup_fallen()
 	
+	# Запускаем аналитику
+	YandexSdk.gameplay_started()
+	
 	# Спавним первый пончик
 	var spawn_pos: Vector2
 	if spawner != null:
@@ -390,10 +393,16 @@ func _set_game_over() -> void:
 		return
 	_state = GameState.GAMEOVER
 	
+	# Останавливаем аналитику
+	YandexSdk.gameplay_stopped()
+	
 	# Проверяем, побит ли рекорд
 	if score > _best:
 		_best = score
 		_save_best_to_disk()
+	
+	# Сохраняем статистику игры
+	_save_game_stats()
 	
 	# Обновляем отображение очков
 	_update_game_over_score()
@@ -456,19 +465,44 @@ func _reset_game() -> void:
 	
 
 func _load_best_from_disk() -> void:
-	var cfg := ConfigFile.new()
-	var err: int = cfg.load(SAVE_PATH)
-	if err != OK:
-		_best = 0
-		return
-	_best = int(cfg.get_value(SAVE_SECTION, SAVE_KEY_BEST, 0))
+	# Используем YandexSdk для загрузки данных
+	if OS.has_feature("yandex"):
+		YandexSdk.load_data(["best_score"])
+		# Подключаемся к сигналу загрузки данных
+		if not YandexSdk.data_loaded.is_connected(_on_data_loaded):
+			YandexSdk.data_loaded.connect(_on_data_loaded)
+		
+		# Загружаем статистику
+		YandexSdk.load_stats(["games_played", "total_score", "best_score"])
+		# Подключаемся к сигналу загрузки статистики
+		if not YandexSdk.stats_loaded.is_connected(_on_stats_loaded):
+			YandexSdk.stats_loaded.connect(_on_stats_loaded)
+		
+		# Загружаем все данные
+		YandexSdk.load_all_data()
+		
+		# Загружаем всю статистику
+		YandexSdk.load_all_stats()
+	else:
+		# Fallback на локальное сохранение для не-веб платформ
+		var cfg := ConfigFile.new()
+		var err: int = cfg.load(SAVE_PATH)
+		if err != OK:
+			_best = 0
+			return
+		_best = int(cfg.get_value(SAVE_SECTION, SAVE_KEY_BEST, 0))
 
 func _save_best_to_disk() -> void:
-	var cfg := ConfigFile.new()
-	cfg.set_value(SAVE_SECTION, SAVE_KEY_BEST, _best)
-	var err: int = cfg.save(SAVE_PATH)
-	if err != OK:
-		push_warning(tr("ui.error.save_record") + " " + SAVE_PATH)
+	# Используем YandexSdk для сохранения данных
+	if OS.has_feature("yandex"):
+		YandexSdk.save_data({"best_score": _best}, true)
+	else:
+		# Fallback на локальное сохранение для не-веб платформ
+		var cfg := ConfigFile.new()
+		cfg.set_value(SAVE_SECTION, SAVE_KEY_BEST, _best)
+		var err: int = cfg.save(SAVE_PATH)
+		if err != OK:
+			push_warning(tr("ui.error.save_record") + " " + SAVE_PATH)
 
 # ===== Вспомогательные =====
 func get_world_bottom_limit() -> float:
@@ -495,22 +529,37 @@ func _setup_yandex_sdk() -> void:
 	YandexSdk.interstitial_ad.connect(_on_interstitial_ad)
 	YandexSdk.rewarded_ad.connect(_on_rewarded_ad)
 	YandexSdk.leaderboard_initialized.connect(_on_leaderboard_initialized)
+	YandexSdk.leaderboard_entries_loaded.connect(_on_leaderboard_entries_loaded)
+	YandexSdk.leaderboard_player_entry_loaded.connect(_on_leaderboard_player_entry_loaded)
+	YandexSdk.stats_loaded.connect(_on_stats_loaded)
 	
 	# Запускаем асинхронную инициализацию
 	_initialize_yandex_sdk_async()
 
 func _initialize_yandex_sdk_async() -> void:
 	"""Асинхронная инициализация YandexSdk"""
-	# Сначала инициализируем игру, затем лидерборд
-	if not YandexSdk.is_game_initialized:
+	# Проверяем, что игра еще не инициализируется
+	if not YandexSdk.is_game_initialization_started and not YandexSdk.is_game_initialized:
 		print("Game: Инициализируем YandexSdk игру...")
 		YandexSdk.init_game()
 		await YandexSdk.game_initialized
 		print("Game: YandexSdk игра инициализирована")
+	elif YandexSdk.is_game_initialized:
+		print("Game: YandexSdk игра уже инициализирована")
+	else:
+		print("Game: YandexSdk игра уже инициализируется, ждем...")
+		await YandexSdk.game_initialized
+		print("Game: YandexSdk игра инициализирована")
 	
-	# Теперь инициализируем лидерборд
+	# Инициализируем лидерборд (хотя метод помечен как устаревший, он все еще нужен)
 	print("Game: Инициализируем лидерборд...")
 	YandexSdk.init_leaderboard()
+	
+	# Вызываем Game Ready API
+	print("Game: Вызываем Game Ready API...")
+	YandexSdk.game_ready()
+	
+	# Game Ready API вызывается без дополнительных сигналов
 
 func _show_interstitial_ad() -> void:
 	"""Показывает Interstitial рекламу при Game Over"""
@@ -545,6 +594,49 @@ func _on_leaderboard_initialized() -> void:
 	print("Game: YandexSdk.is_leaderboard_initialized = ", YandexSdk.is_leaderboard_initialized)
 	_leaderboard_ready = true
 
+func _on_data_loaded(data: Dictionary) -> void:
+	"""Обработчик загрузки данных от YandexSdk"""
+	print("Game: Данные загружены: ", data)
+	if data.has("best_score"):
+		_best = int(data["best_score"])
+		print("Game: Лучший результат загружен: ", _best)
+
+func _on_stats_loaded(stats: Dictionary) -> void:
+	"""Обработчик загрузки статистики от YandexSdk"""
+	print("Game: Статистика загружена: ", stats)
+	if stats.has("best_score"):
+		_best = int(stats["best_score"])
+		print("Game: Лучший результат из статистики: ", _best)
+
+func _on_leaderboard_entries_loaded(data: Dictionary) -> void:
+	"""Обработчик загрузки записей лидерборда"""
+	print("Game: Записи лидерборда загружены: ", data)
+	# Здесь можно обновить UI лидерборда с полученными данными
+
+func _on_leaderboard_player_entry_loaded(data: Dictionary) -> void:
+	"""Обработчик загрузки записи игрока в лидерборде"""
+	print("Game: Запись игрока в лидерборде загружена: ", data)
+	# Здесь можно обновить UI с записью игрока
+
+
+func _save_game_stats() -> void:
+	"""Сохраняет статистику игры"""
+	if OS.has_feature("yandex"):
+		var stats = {
+			"games_played": 1,
+			"total_score": score,
+			"best_score": _best
+		}
+		YandexSdk.save_stats(stats)
+		print("Game: Статистика сохранена: ", stats)
+		
+		# Инкрементируем счетчик игр
+		var increments = {
+			"games_played": 1
+		}
+		YandexSdk.increment_stats(increments)
+		print("Game: Статистика инкрементирована: ", increments)
+
 # ===== Лидерборд =====
 func _submit_score_to_leaderboard() -> void:
 	"""Отправляет результат игрока в лидерборд"""
@@ -565,9 +657,10 @@ func _submit_score_to_leaderboard() -> void:
 	
 	# Проверяем авторизацию перед отправкой
 	YandexSdk.check_is_authorized()
-	# Подключаемся к сигналу проверки авторизации
-	if not YandexSdk.check_auth.is_connected(_on_auth_checked):
-		YandexSdk.check_auth.connect(_on_auth_checked)
+	# Подключаемся к сигналу проверки авторизации (отключаем предыдущие подключения)
+	if YandexSdk.check_auth.is_connected(_on_auth_checked):
+		YandexSdk.check_auth.disconnect(_on_auth_checked)
+	YandexSdk.check_auth.connect(_on_auth_checked)
 
 func _on_auth_checked(is_authorized: bool) -> void:
 	"""Обработчик проверки авторизации"""
@@ -600,6 +693,11 @@ func _load_and_show_leaderboard() -> void:
 	elif YandexSdk.is_leaderboard_initialized:
 		_leaderboard_ready = true
 	
+	# Загружаем данные лидерборда напрямую через YandexSDK
+	print("Game: Загружаем лидерборд напрямую...")
+	YandexSdk.load_leaderboard_entries("donuttowerleaderboard", true, 5, 10)
+	
+	# Также загружаем через LeaderboardPanel для UI
 	if leaderboard_panel != null and leaderboard_panel.has_method("load_leaderboard"):
 		leaderboard_panel.load_leaderboard()
 	else:
