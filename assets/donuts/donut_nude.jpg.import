@@ -2,16 +2,12 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://6gna1v8xw7qh"
-path="res://.godot/imported/Woll1.png-d4b5423f13fec70c2a24e32d9c69cca6.ctex"
-metadata={
-"vram_texture": false
-}
+uid="uid://cg1b41n3q5ots"
+valid=false
 
 [deps]
 
-source_file="res://assets/bg/Woll1.png"
-dest_files=["res://.godot/imported/Woll1.png-d4b5423f13fec70c2a24e32d9c69cca6.ctex"]
+source_file="res://assets/donuts/donut_nude.jpg"
 
 [params]
 

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://6gna1v8xw7qh"
-path="res://.godot/imported/Woll1.png-d4b5423f13fec70c2a24e32d9c69cca6.ctex"
+uid="uid://dlm1p4rq7olg4"
+path="res://.godot/imported/bg_lvl_2.png-2a7ccce5d82ba746fc17cd0c3db49f8d.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/bg/Woll1.png"
-dest_files=["res://.godot/imported/Woll1.png-d4b5423f13fec70c2a24e32d9c69cca6.ctex"]
+source_file="res://assets/bg/bg_lvl_2.png"
+dest_files=["res://.godot/imported/bg_lvl_2.png-2a7ccce5d82ba746fc17cd0c3db49f8d.ctex"]
 
 [params]
 

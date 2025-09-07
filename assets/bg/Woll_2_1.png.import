@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://6gna1v8xw7qh"
-path="res://.godot/imported/Woll1.png-d4b5423f13fec70c2a24e32d9c69cca6.ctex"
+uid="uid://ul4j3bqaf5f7"
+path="res://.godot/imported/Woll_2_1.png-245770be2a900988216609d4b06937fb.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/bg/Woll1.png"
-dest_files=["res://.godot/imported/Woll1.png-d4b5423f13fec70c2a24e32d9c69cca6.ctex"]
+source_file="res://assets/bg/Woll_2_1.png"
+dest_files=["res://.godot/imported/Woll_2_1.png-245770be2a900988216609d4b06937fb.ctex"]
 
 [params]
 
