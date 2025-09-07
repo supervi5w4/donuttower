@@ -24,14 +24,24 @@ func load_leaderboard() -> void:
 	"""Загружает данные лидерборда"""
 	print("LeaderboardPanel: Загрузка лидерборда...")
 	
+	# Проверяем, что мы на веб-платформе
+	if not OS.has_feature("yandex"):
+		print("LeaderboardPanel: Не веб-платформа, лидерборд недоступен")
+		_show_error(tr("ui.leaderboard.not_available"))
+		return
+	
 	# Лидерборд инициализируется автоматически при первом вызове load_leaderboard_entries
 	print("LeaderboardPanel: Лидерборд будет инициализирован автоматически...")
 	
-	# Проверяем авторизацию перед загрузкой
-	YandexSdk.check_is_authorized()
+	# Сначала отключаем существующие соединения, если они есть
+	if YandexSdk.check_auth.is_connected(_on_auth_checked_for_load):
+		YandexSdk.check_auth.disconnect(_on_auth_checked_for_load)
+	
 	# Подключаемся к сигналу проверки авторизации
-	if not YandexSdk.check_auth.is_connected(_on_auth_checked_for_load):
-		YandexSdk.check_auth.connect(_on_auth_checked_for_load)
+	YandexSdk.check_auth.connect(_on_auth_checked_for_load)
+	
+	# Затем вызываем проверку авторизации
+	YandexSdk.check_is_authorized()
 
 func _on_auth_checked_for_load(is_authorized: bool) -> void:
 	"""Обработчик проверки авторизации для загрузки лидерборда"""

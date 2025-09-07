@@ -420,9 +420,6 @@ func _set_game_over() -> void:
 	# Загружаем и показываем лидерборд
 	_load_and_show_leaderboard()
 	
-	# Загружаем запись игрока в лидерборде
-	_load_player_leaderboard_entry()
-	
 	# Запускаем таймер для показа рекламы через 3 секунды
 	_start_ad_delay_timer()
 
@@ -691,12 +688,15 @@ func _submit_score_to_leaderboard() -> void:
 	print("Game: Лидерборд будет инициализирован автоматически...")
 	_leaderboard_ready = true
 	
-	# Проверяем авторизацию перед отправкой
-	YandexSdk.check_is_authorized()
-	# Подключаемся к сигналу проверки авторизации (отключаем предыдущие подключения)
+	# Сначала отключаем существующие соединения, если они есть
 	if YandexSdk.check_auth.is_connected(_on_auth_checked):
 		YandexSdk.check_auth.disconnect(_on_auth_checked)
+	
+	# Подключаемся к сигналу проверки авторизации
 	YandexSdk.check_auth.connect(_on_auth_checked)
+	
+	# Затем вызываем проверку авторизации
+	YandexSdk.check_is_authorized()
 
 func _on_auth_checked(is_authorized: bool) -> void:
 	"""Обработчик проверки авторизации"""
@@ -709,6 +709,8 @@ func _on_auth_checked(is_authorized: bool) -> void:
 	if is_authorized:
 		# Отправляем результат в лидерборд
 		YandexSdk.save_leaderboard_score("donuttowerleaderboard", score)
+		# После сохранения загружаем запись игрока
+		_load_player_leaderboard_entry()
 	else:
 		print("Game: Пользователь не авторизован, результат не отправлен в лидерборд")
 		# Можно предложить авторизацию
@@ -734,12 +736,15 @@ func _load_player_leaderboard_entry() -> void:
 	print("Game: Лидерборд будет инициализирован автоматически для загрузки записи игрока...")
 	_leaderboard_ready = true
 	
-	# Проверяем авторизацию перед загрузкой записи игрока
-	YandexSdk.check_is_authorized()
-	# Подключаемся к сигналу проверки авторизации (отключаем предыдущие подключения)
+	# Сначала отключаем существующие соединения, если они есть
 	if YandexSdk.check_auth.is_connected(_on_auth_checked_for_player_entry):
 		YandexSdk.check_auth.disconnect(_on_auth_checked_for_player_entry)
+	
+	# Подключаемся к сигналу проверки авторизации
 	YandexSdk.check_auth.connect(_on_auth_checked_for_player_entry)
+	
+	# Затем вызываем проверку авторизации
+	YandexSdk.check_is_authorized()
 
 func _on_auth_checked_for_player_entry(is_authorized: bool) -> void:
 	"""Обработчик проверки авторизации для загрузки записи игрока"""
