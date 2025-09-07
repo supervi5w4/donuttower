@@ -19,13 +19,18 @@ config/icon="res://icon.svg"
 
 LanguageManager="*res://scripts/LanguageManager.gd"
 Music="*res://singletons/MusicManager.gd"
-YandexSdk="*res://addons/yandex_games_sdk/yandex_sdk.gd"
+YandexSdk="*res://addons/godot-yandex-games-sdk-main/yandex_sdk.gd"
+YandexSDK="*res://addons/godot-yandex-games-sdk-main/yandex_sdk.gd"
 
 [display]
 
 window/size/viewport_width=720
 window/size/viewport_height=1280
 window/stretch/mode="canvas_items"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/godot-yandex-games-sdk-main/plugin.cfg")
 
 [input]
 

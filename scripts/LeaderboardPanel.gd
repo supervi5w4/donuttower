@@ -24,10 +24,8 @@ func load_leaderboard() -> void:
 	"""Загружает данные лидерборда"""
 	print("LeaderboardPanel: Загрузка лидерборда...")
 	
-	# Ждем инициализации лидерборда
-	if not YandexSdk.is_leaderboard_initialized:
-		print("LeaderboardPanel: Лидерборд еще не готов, ждем инициализации...")
-		await YandexSdk.leaderboard_initialized
+	# Лидерборд инициализируется автоматически при первом вызове load_leaderboard_entries
+	print("LeaderboardPanel: Лидерборд будет инициализирован автоматически...")
 	
 	# Проверяем авторизацию перед загрузкой
 	YandexSdk.check_is_authorized()

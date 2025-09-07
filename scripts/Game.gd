@@ -567,9 +567,8 @@ func _initialize_yandex_sdk_async() -> void:
 		await YandexSdk.game_initialized
 		print("Game: YandexSdk игра инициализирована")
 	
-	# Инициализируем лидерборд (хотя метод помечен как устаревший, он все еще нужен)
-	print("Game: Инициализируем лидерборд...")
-	YandexSdk.init_leaderboard()
+	# Лидерборд инициализируется автоматически при первом вызове load_leaderboard_entries
+	print("Game: Лидерборд будет инициализирован автоматически при загрузке данных...")
 	
 	# Вызываем Game Ready API
 	print("Game: Вызываем Game Ready API...")
@@ -688,13 +687,9 @@ func _submit_score_to_leaderboard() -> void:
 		print("Game: Не веб-платформа, лидерборд недоступен")
 		return
 	
-	# Ждем инициализации лидерборда
-	if not _leaderboard_ready and not YandexSdk.is_leaderboard_initialized:
-		print("Game: Лидерборд еще не готов, ждем инициализации...")
-		await YandexSdk.leaderboard_initialized
-		_leaderboard_ready = true
-	elif YandexSdk.is_leaderboard_initialized:
-		_leaderboard_ready = true
+	# Лидерборд инициализируется автоматически при первом вызове save_leaderboard_score
+	print("Game: Лидерборд будет инициализирован автоматически...")
+	_leaderboard_ready = true
 	
 	# Проверяем авторизацию перед отправкой
 	YandexSdk.check_is_authorized()
@@ -735,13 +730,9 @@ func _load_player_leaderboard_entry() -> void:
 		_update_player_rank_display("")
 		return
 	
-	# Ждем инициализации лидерборда
-	if not _leaderboard_ready and not YandexSdk.is_leaderboard_initialized:
-		print("Game: Лидерборд еще не готов для загрузки записи игрока, ждем инициализации...")
-		await YandexSdk.leaderboard_initialized
-		_leaderboard_ready = true
-	elif YandexSdk.is_leaderboard_initialized:
-		_leaderboard_ready = true
+	# Лидерборд инициализируется автоматически при первом вызове load_leaderboard_player_entry
+	print("Game: Лидерборд будет инициализирован автоматически для загрузки записи игрока...")
+	_leaderboard_ready = true
 	
 	# Проверяем авторизацию перед загрузкой записи игрока
 	YandexSdk.check_is_authorized()
