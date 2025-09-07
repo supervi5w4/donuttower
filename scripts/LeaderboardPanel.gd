@@ -12,6 +12,7 @@ var leaderboard_entries: Array = []
 func _ready() -> void:
 	# Подключаем сигналы от официального YandexSdk
 	YandexSdk.leaderboard_entries_loaded.connect(_on_leaderboard_entries_loaded)
+	YandexSdk.leaderboard_error.connect(_on_leaderboard_error)
 	
 	# Подключаем сигнал смены языка
 	if LanguageManager:
@@ -65,6 +66,10 @@ func _on_leaderboard_entries_loaded(data: Dictionary) -> void:
 		_display_leaderboard()
 	else:
 		_show_error(tr("ui.leaderboard.load_error"))
+
+func _on_leaderboard_error() -> void:
+	"""Обработчик ошибки загрузки лидерборда"""
+	_show_error(tr("ui.leaderboard.load_error"))
 
 func _display_leaderboard() -> void:
 	"""Отображает загруженные данные лидерборда"""

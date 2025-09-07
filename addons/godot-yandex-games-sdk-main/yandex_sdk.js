@@ -69,17 +69,17 @@ function GameplayStopped() {
 
 // Leader boards
 function GetLeaderboardDescription(leaderboardName, callback) {
-	ysdk.leaderboards.getDescription(leaderboardName).then(
-		(result) => {
+	ysdk.getLeaderboards()
+		.then(lb => lb.getDescription(leaderboardName))
+		.then((result) => {
 			console.log("Leaderboard description:");
 			console.log(result);
 			callback("loaded", result);
-		},
-		(error) => {
-			console.log("Leaderboard description load error");
+		})
+		.catch((error) => {
+			console.error("Error loading leaderboard description:", error);
 			callback("error");
-		},
-	);
+		});
 }
 
 function CheckAuth(callback) {
@@ -95,7 +95,7 @@ function CheckAuth(callback) {
 	);
 }
 
-function SaveLeaderboardScore(leaderboardName, score, extraData) {
+function SaveLeaderboardScore(leaderboardName, score, extraData, callback) {
 	console.log(
 		"Save leaderboard score",
 		score,
@@ -104,21 +104,30 @@ function SaveLeaderboardScore(leaderboardName, score, extraData) {
 		"with",
 		extraData,
 	);
-	ysdk.leaderboards.setScore(leaderboardName, score, extraData).then(() => {
-		console.log("Leaderboard score saved");
-	});
+	ysdk.getLeaderboards()
+		.then(lb => lb.setScore(leaderboardName, score, extraData))
+		.then(() => {
+			console.log("Leaderboard score saved");
+			if (callback) callback("saved");
+		})
+		.catch(err => {
+			console.error("Error saving leaderboard score:", err);
+			if (callback) callback("error");
+		});
 }
 
 function LoadLeaderboardPlayerEntry(leaderboardName, callback) {
-	ysdk.leaderboards.getPlayerEntry(leaderboardName)
+	ysdk.getLeaderboards()
+		.then(lb => lb.getPlayerEntry(leaderboardName))
 		.then((res) => {
-			console.log("Loader leaderboard player entry:", res);
+			console.log("Loaded leaderboard player entry:", res);
 			callback("loaded", res);
 		})
 		.catch((err) => {
+			console.error("Error loading leaderboard player entry:", err);
 			if (err.code === "LEADERBOARD_PLAYER_NOT_PRESENT") {
 				console.log("У игрока нет записи в лидерборде");
-			} else console.log(err);
+			}
 			callback("error");
 		});
 }
@@ -130,20 +139,20 @@ function LoadLeaderboardEntries(
 	quantityTop,
 	callback,
 ) {
-	ysdk.leaderboards.getEntries(leaderboardName, {
-		includeUser: includeUser,
-		quantityAround: quantityAround,
-		quantityTop: quantityTop,
-	})
+	ysdk.getLeaderboards()
+		.then(lb => lb.getEntries(leaderboardName, {
+			includeUser: includeUser,
+			quantityAround: quantityAround,
+			quantityTop: quantityTop,
+		}))
 		.then((res) => {
 			console.log("Loaded leaderboard entries:", res);
 			callback("loaded", res);
 		})
 		.catch((err) => {
+			console.error("Error loading leaderboard entries:", err);
 			if (err.code === "LEADERBOARD_NOT_FOUND") {
 				console.log("Лидерборд не найден.");
-			} else {
-				console.log(err);
 			}
 			callback("error");
 		});

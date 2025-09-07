@@ -9,6 +9,7 @@ signal leaderboard_initialized()
 signal data_loaded(data)
 signal leaderboard_player_entry_loaded(data)
 signal leaderboard_entries_loaded(data)
+signal leaderboard_error()
 signal stats_loaded(stats: Dictionary)
 signal check_auth(answer: bool)
 
@@ -218,6 +219,7 @@ func save_leaderboard_score(leaderboard_name, score, extra_data="") -> void:
 	if not OS.has_feature("yandex"):
 		return
 	if not is_leaderboard_initialized:
+		init_leaderboard()
 		await leaderboard_initialized
 	window.SaveLeaderboardScore(leaderboard_name, score, extra_data)
 
@@ -268,6 +270,7 @@ func load_leaderboard_player_entry(leaderboard_name: String) -> void:
 	if not OS.has_feature("yandex"):
 		return
 	if not is_leaderboard_initialized:
+		init_leaderboard()
 		await leaderboard_initialized
 	window.LoadLeaderboardPlayerEntry(leaderboard_name, callback_leaderboard_player_entry_loaded)
 
@@ -276,6 +279,7 @@ func load_leaderboard_entries(leaderboard_name: String, include_user: bool, quan
 	if not OS.has_feature("yandex"):
 		return
 	if not is_leaderboard_initialized:
+		init_leaderboard()
 		await leaderboard_initialized
 	window.LoadLeaderboardEntries(leaderboard_name, include_user, quantity_around, quantity_top, callback_leaderboard_entries_loaded)
 
@@ -344,6 +348,7 @@ func _leaderboard_entries_loaded(args) -> void:
 		leaderboard_entries_loaded.emit(result)
 	elif args[0] == 'error':
 		print("Произошла ошибка при загрузке лидерборда.")
+		leaderboard_error.emit()
 
 
 func _game_initialized(args) -> void:
