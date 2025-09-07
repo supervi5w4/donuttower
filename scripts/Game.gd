@@ -27,7 +27,7 @@ enum GameState { READY, PLAY, GAMEOVER }
 @onready var score_label: Label = get_node("UI/UIRoot/ScoreLabel")
 @onready var game_over_panel: Control = get_node("UI/UIRoot/GameOverPanel")
 @onready var game_over_score_label: Label = get_node("UI/UIRoot/GameOverPanel/MainContainer/ScoreLabel")
-@onready var player_rank_label: Label = get_node("UI/UIRoot/GameOverPanel/MainContainer/PlayerRankLabel")
+@onready var player_rank_label: Label = get_node_or_null("UI/UIRoot/GameOverPanel/MainContainer/PlayerRankLabel")
 @onready var menu_button: Button = get_node("UI/UIRoot/GameOverPanel/MainContainer/MenuButton")
 @onready var leaderboard_panel: Control = get_node("UI/UIRoot/GameOverPanel/MainContainer/LeaderboardPanel")
 @onready var spawner: Spawner = get_node("Spawner")
@@ -546,7 +546,8 @@ func _setup_yandex_sdk() -> void:
 	YandexSdk.leaderboard_initialized.connect(_on_leaderboard_initialized)
 	YandexSdk.leaderboard_entries_loaded.connect(_on_leaderboard_entries_loaded)
 	YandexSdk.leaderboard_player_entry_loaded.connect(_on_leaderboard_player_entry_loaded)
-	YandexSdk.stats_loaded.connect(_on_stats_loaded)
+	if not YandexSdk.stats_loaded.is_connected(_on_stats_loaded):
+		YandexSdk.stats_loaded.connect(_on_stats_loaded)
 	
 	# Запускаем асинхронную инициализацию
 	_initialize_yandex_sdk_async()
