@@ -330,22 +330,20 @@ func _stats_loaded(args) -> void:
 
 func _leaderboard_player_entry_loaded(args) -> void:
 	if args[0] == 'loaded':
-		var result := {}
-		var keys = JavaScriptBridge.get_interface("Object").keys(args[1])
-		var values = JavaScriptBridge.get_interface("Object").values(args[1])
-		for i in range(keys.length):
-			result[keys[i]] = values[i]
-		leaderboard_player_entry_loaded.emit(result)
+		var json := JSON.new()
+		if json.parse(args[1]) == OK:
+			leaderboard_player_entry_loaded.emit(json.data)
+		else:
+			leaderboard_error.emit()
 
 
 func _leaderboard_entries_loaded(args) -> void:
 	if args[0] == 'loaded':
-		var result := {}
-		var keys = JavaScriptBridge.get_interface("Object").keys(args[1])
-		var values = JavaScriptBridge.get_interface("Object").values(args[1])
-		for i in range(keys.length):
-			result[keys[i]] = values[i]
-		leaderboard_entries_loaded.emit(result)
+		var json := JSON.new()
+		if json.parse(args[1]) == OK:
+			leaderboard_entries_loaded.emit(json.data)
+		else:
+			leaderboard_error.emit()
 	elif args[0] == 'error':
 		print("Произошла ошибка при загрузке лидерборда.")
 		leaderboard_error.emit()

@@ -121,7 +121,7 @@ function LoadLeaderboardPlayerEntry(leaderboardName, callback) {
 		.then(lb => lb.getPlayerEntry(leaderboardName))
 		.then((res) => {
 			console.log("Loaded leaderboard player entry:", res);
-			callback("loaded", res);
+			callback("loaded", JSON.stringify(res));
 		})
 		.catch((err) => {
 			console.error("Error loading leaderboard player entry:", err);
@@ -147,7 +147,7 @@ function LoadLeaderboardEntries(
 		}))
 		.then((res) => {
 			console.log("Loaded leaderboard entries:", res);
-			callback("loaded", res);
+			callback("loaded", JSON.stringify(res));
 		})
 		.catch((err) => {
 			console.error("Error loading leaderboard entries:", err);
