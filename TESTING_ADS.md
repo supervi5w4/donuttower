@@ -72,7 +72,6 @@
 4. Убедитесь, что кнопка Continue еще доступна
 
 ## 📁 Файлы для тестирования:
-- `scripts/YandexSDK.gd` - основной скрипт SDK
+- `addons/yandex_games_sdk/yandex_sdk.gd` - основной скрипт SDK
 - `scripts/AdTester.gd` - тестовый скрипт
-- `export_templates/web/yandex_games_template.html` - HTML шаблон
 - `TESTING_ADS.md` - эта инструкция

@@ -17,10 +17,11 @@ config/icon="res://icon.svg"
 
 [autoload]
 
+GameStateManager="*res://autoloads/GameState.gd"
 LanguageManager="*res://scripts/LanguageManager.gd"
 Music="*res://singletons/MusicManager.gd"
-YandexSdk="*res://addons/godot-yandex-games-sdk-main/yandex_sdk.gd"
 YandexSDK="*res://addons/godot-yandex-games-sdk-main/yandex_sdk.gd"
+LevelData="*res://autoloads/LevelData.gd"
 
 [display]
 

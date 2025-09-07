@@ -17,14 +17,14 @@
   - Continue доступен только 1 раз за попытку
   - При ошибках рекламы игра продолжается бесплатно
 
-### 3. HTML шаблон для Яндекс Игр
-- **Файл**: `export_templates/web/yandex_games_template.html`
+### 3. Addon для Яндекс Игр
+- **Файл**: `addons/yandex_games_sdk/` - полная интеграция с Яндекс Играми
 - Автоматическая загрузка и инициализация SDK Яндекс Игр
 - Совместимость с Godot 4.4.1
 
 ### 4. Настройки экспорта
 - **Файл**: `export_presets.cfg` - пресет для экспорта в Яндекс Игры
-- Использует кастомный HTML шаблон
+- Использует стандартный HTML шаблон Godot
 
 ## Как использовать
 
@@ -61,8 +61,7 @@
 ## Файлы проекта
 
 ### Новые файлы:
-- `scripts/YandexSDK.gd` - скрипт SDK
-- `export_templates/web/yandex_games_template.html` - HTML шаблон
+- `addons/yandex_games_sdk/` - addon для интеграции с Яндекс Играми
 - `export_presets.cfg` - настройки экспорта
 - `YANDEX_INTEGRATION_README.md` - эта документация
 
