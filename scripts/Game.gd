@@ -20,16 +20,34 @@ const SAVE_PATH := "user://save.cfg"
 const SAVE_SECTION := "stats"
 const SAVE_KEY_BEST := "best"
 
-enum GameState { READY, PLAY, GAMEOVER }
+# Параметризация уровня
+@export var level_number: int = 1
+@export var score_to_unlock: int = 50
+
+@export var cart_path: NodePath
+@export var wall_left_path: NodePath
+@export var wall_right_path: NodePath
+
+@export var initial_cart_speed_level1: float = 300.0
+@export var initial_cart_speed_level2: float = 380.0
+
+@export var wall_scale_x_level1: float = 1.0
+@export var wall_scale_x_level2: float = 0.8
+
+signal score_changed(new_score: int)
+
+enum GameMode { READY, PLAY, GAMEOVER }
 
 @onready var cam: Camera2D = get_node("Camera2D")
 @onready var ui_root: Control = get_node("UI/UIRoot")
 @onready var score_label: Label = get_node("UI/UIRoot/ScoreLabel")
 @onready var game_over_panel: Control = get_node("UI/UIRoot/GameOverPanel")
 @onready var game_over_score_label: Label = get_node("UI/UIRoot/GameOverPanel/MainContainer/ScoreLabel")
-@onready var player_rank_label: Label = get_node_or_null("UI/UIRoot/GameOverPanel/MainContainer/PlayerRankLabel")
 @onready var menu_button: Button = get_node("UI/UIRoot/GameOverPanel/MainContainer/MenuButton")
-@onready var leaderboard_panel: Control = get_node("UI/UIRoot/GameOverPanel/MainContainer/LeaderboardPanel")
+@onready var game_over_label: Label = get_node("UI/UIRoot/GameOverPanel/MainContainer/GameOverLabel")
+
+# Кнопка следующего уровня (создадим программно)
+var next_level_button: Button
 @onready var spawner: Spawner = get_node("Spawner")
 # YandexSDK теперь доступен как автозагруженный синглтон
 @onready var preview: PreviewDonut = spawner.get_node("PreviewDonut")
@@ -49,9 +67,9 @@ var _last_spawn_time: float = 0.0
 var score: int = 0
 var combo_lock: bool = false
 var _best: int = 0
-var _state: int = GameState.READY
-var _leaderboard_ready: bool = false
+var _state: int = GameMode.READY
 var next_style: String = "pink"
+var _level_ui: LevelUI
 
 # Камера / башня
 var _cam_start_y: float = 640.0
@@ -79,6 +97,29 @@ const SETTLE_RATE := 0.10              # вклад в линейный поро
 const SETTLE_ANG_RATE := 0.02          # вклад в угловой порог на очко
 
 func _ready() -> void:
+	print("DEBUG: Game._ready() - начинаем инициализацию")
+	get_node("/root/GameStateManager").reset_for_level(level_number)
+	
+	# Проверяем, есть ли GameOverPanel в сцене
+	var panel := get_node_or_null("UI/UIRoot/GameOverPanel")
+	print("DEBUG: Game._ready() - GameOverPanel найдена: ", panel)
+	if panel:
+		print("DEBUG: Game._ready() - GameOverPanel имеет скрипт: ", panel.get_script() != null)
+		print("DEBUG: Game._ready() - GameOverPanel в группе: ", panel.is_in_group("GameOverPanel"))
+		print("DEBUG: Game._ready() - GameOverPanel имеет метод show_game_over: ", "show_game_over" in panel)
+	
+	_level_ui = LevelUI.new()
+	add_child(_level_ui)
+	_level_ui.set_level_number(level_number)
+	_level_ui.set_progress(0, score_to_unlock)
+	
+	# Устанавливаем цветовую схему для уровня
+	var level_info = LevelData.get_level_info(level_number)
+	if level_info and level_info.color_scheme:
+		_level_ui.set_color_scheme(level_info.color_scheme)
+	
+	_apply_level_params()
+	
 	_load_best_from_disk()
 	_init_donut_pool()
 	_update_score_label()
@@ -100,6 +141,9 @@ func _ready() -> void:
 	# Выбираем первый стиль и обновляем превью
 	_select_next_style()
 	_update_preview()
+	
+	# Настраиваем панель Game Over
+	_setup_game_over_panel()
 
 func _process(_delta: float) -> void:
 	_cleanup_fallen()
@@ -126,10 +170,10 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _on_tap(_pos: Vector2) -> void:
 	
-	if _state == GameState.READY:
+	if _state == GameMode.READY:
 		_start_game()
 		return
-	if _state != GameState.PLAY:
+	if _state != GameMode.PLAY:
 		return
 	if game_over_panel.visible:
 		return
@@ -147,13 +191,13 @@ func _on_tap(_pos: Vector2) -> void:
 	_spawn_donut(spawn_pos)
 
 func _start_game() -> void:
-	_state = GameState.PLAY
+	_state = GameMode.PLAY
 	
 	# Дополнительная очистка перед началом игры
 	_cleanup_fallen()
 	
 	# Запускаем аналитику
-	YandexSdk.gameplay_started()
+	YandexSDK.gameplay_started()
 	
 	# Спавним первый пончик
 	var spawn_pos: Vector2
@@ -188,6 +232,129 @@ func _update_preview() -> void:
 		if Donut.DONUT_TEXTURES.has(next_style):
 			var texture: Texture2D = Donut.DONUT_TEXTURES[next_style]
 			preview.set_texture(texture)
+
+func _apply_level_params() -> void:
+	var cart := get_node_or_null(cart_path) if cart_path != NodePath("") else null
+	if cart and "set_speed" in cart:
+		var sp := initial_cart_speed_level1 if level_number == 1 else initial_cart_speed_level2
+		cart.set_speed(sp)
+
+	var wl := get_node_or_null(wall_left_path) if wall_left_path != NodePath("") else null
+	var wr := get_node_or_null(wall_right_path) if wall_right_path != NodePath("") else null
+	var sx := wall_scale_x_level1 if level_number == 1 else wall_scale_x_level2
+	if wl:
+		wl.scale.x = sx
+	if wr:
+		wr.scale.x = sx
+
+func add_score(delta: int) -> void:
+	score += delta
+	get_node("/root/GameStateManager").score = score
+	emit_signal("score_changed", score)
+
+	if _level_ui:
+		_level_ui.set_progress(score, score_to_unlock)
+
+	# Победа на уровнях
+	if level_number == 1 and score >= score_to_unlock:
+		get_node("/root/GameStateManager").unlock_level(2)
+		_open_win_panel()
+	elif level_number == 2 and score >= score_to_unlock:
+		# Для уровня 2 пока что просто показываем панель победы
+		# В будущем здесь можно добавить разблокировку уровня 3
+		_open_win_panel()
+
+func _setup_game_over_panel() -> void:
+	# Создаем кнопку "Следующий уровень" программно только для уровня 1
+	if level_number == 1:
+		next_level_button = Button.new()
+		next_level_button.name = "NextLevelButton"
+		next_level_button.text = "Следующий уровень"
+		next_level_button.custom_minimum_size = Vector2(400, 80)
+		next_level_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		next_level_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		
+		# Стилизация кнопки в том же стиле, что и MenuButton
+		next_level_button.add_theme_color_override("font_hover_color", Color(0.2, 0.1, 0.05, 1))
+		next_level_button.add_theme_color_override("font_color", Color(0.2, 0.1, 0.05, 1))
+		next_level_button.add_theme_color_override("font_pressed_color", Color(0.2, 0.1, 0.05, 1))
+		next_level_button.add_theme_font_size_override("font_size", 24)
+		
+		# Применяем те же стили, что и у MenuButton
+		var menu_button := game_over_panel.get_node("MainContainer/MenuButton")
+		if menu_button:
+			# Копируем стили от MenuButton
+			next_level_button.add_theme_stylebox_override("hover", menu_button.get_theme_stylebox("hover"))
+			next_level_button.add_theme_stylebox_override("pressed", menu_button.get_theme_stylebox("pressed"))
+			next_level_button.add_theme_stylebox_override("normal", menu_button.get_theme_stylebox("normal"))
+			print("DEBUG: Стили кнопки скопированы от MenuButton")
+		else:
+			print("DEBUG: MenuButton не найден для копирования стилей")
+		
+		# Добавляем кнопку в MainContainer в правильную позицию
+		var main_container := game_over_panel.get_node("MainContainer")
+		
+		# Находим индекс кнопки MenuButton
+		var menu_button_index := -1
+		for i in range(main_container.get_child_count()):
+			if main_container.get_child(i).name == "MenuButton":
+				menu_button_index = i
+				break
+		
+		if menu_button_index >= 0:
+			# Добавляем кнопку перед MenuButton
+			main_container.add_child(next_level_button)
+			main_container.move_child(next_level_button, menu_button_index)
+			print("DEBUG: Кнопка 'Следующий уровень' добавлена перед MenuButton на позицию ", menu_button_index)
+		else:
+			# Fallback: добавляем в конец
+			main_container.add_child(next_level_button)
+			print("DEBUG: MenuButton не найден, кнопка добавлена в конец")
+		
+		# Подключаем сигнал
+		next_level_button.pressed.connect(_on_next_level_pressed)
+		
+		# Скрываем кнопку по умолчанию
+		next_level_button.visible = false
+		
+		# Отладочная информация о порядке элементов
+		print("DEBUG: GameOverPanel настроена с кнопкой следующего уровня для уровня 1")
+		print("DEBUG: Финальный порядок элементов в MainContainer:")
+		for i in range(main_container.get_child_count()):
+			var child = main_container.get_child(i)
+			print("DEBUG: ", i, ": ", child.name, " (", child.get_class(), ")")
+	else:
+		# Для уровня 2 и выше используем кнопку из сцены
+		next_level_button = game_over_panel.get_node_or_null("MainContainer/NextLevelButton")
+		if next_level_button:
+			next_level_button.pressed.connect(_on_next_level_pressed)
+			print("DEBUG: Используем кнопку 'Следующий уровень' из сцены для уровня ", level_number)
+
+func _open_win_panel() -> void:
+	print("DEBUG: Показываем панель победы")
+	_show_win_panel()
+
+func _show_win_panel() -> void:
+	# Обновляем заголовок
+	if game_over_label:
+		game_over_label.text = "Уровень пройден!"
+	
+	# Обновляем счет
+	if game_over_score_label:
+		game_over_score_label.text = "Очки: " + str(score)
+	
+	# Показываем кнопку следующего уровня только для уровней 1 и 2
+	if next_level_button:
+		if level_number == 1 or level_number == 2:
+			next_level_button.visible = true
+			print("DEBUG: Кнопка следующего уровня показана для уровня ", level_number)
+		else:
+			next_level_button.visible = false
+			print("DEBUG: Кнопка следующего уровня скрыта для уровня ", level_number)
+	
+	# Показываем панель
+	game_over_panel.visible = true
+	print("DEBUG: Панель победы показана")
 
 # ===== Пул пончиков =====
 func _init_donut_pool() -> void:
@@ -349,7 +516,7 @@ func _on_donut_settled(donut_obj: Object) -> void:
 	if d == null or not is_instance_valid(d):
 		return
 
-	score += 1
+	add_score(1)
 	_update_score_label()
 
 	# сохраняем Y до await (после await d может быть удалён)
@@ -394,12 +561,12 @@ func _recalc_difficulty() -> void:
 
 # ===== Game Over / Restart / Continue / Save =====
 func _set_game_over() -> void:
-	if _state == GameState.GAMEOVER:
+	if _state == GameMode.GAMEOVER:
 		return
-	_state = GameState.GAMEOVER
+	_state = GameMode.GAMEOVER
 	
 	# Останавливаем аналитику
-	YandexSdk.gameplay_stopped()
+	YandexSDK.gameplay_stopped()
 	
 	# Проверяем, побит ли рекорд
 	if score > _best:
@@ -412,16 +579,43 @@ func _set_game_over() -> void:
 	# Обновляем отображение очков
 	_update_game_over_score()
 	_update_score_label()
-	_show_game_over()
 	
-	# Отправляем результат в лидерборд
-	_submit_score_to_leaderboard()
-	
-	# Загружаем и показываем лидерборд
-	_load_and_show_leaderboard()
+	# Показываем панель поражения
+	_show_lose_panel()
 	
 	# Запускаем таймер для показа рекламы через 3 секунды
 	_start_ad_delay_timer()
+
+func _show_lose_panel() -> void:
+	# Обновляем заголовок
+	if game_over_label:
+		game_over_label.text = "Игра окончена!"
+	
+	# Обновляем счет
+	if game_over_score_label:
+		game_over_score_label.text = "Очки: " + str(score)
+	
+	# Скрываем кнопку следующего уровня
+	if next_level_button:
+		next_level_button.visible = false
+		print("DEBUG: Кнопка следующего уровня скрыта")
+	
+	# Показываем панель
+	game_over_panel.visible = true
+	print("DEBUG: Панель поражения показана")
+
+func _on_next_level_pressed() -> void:
+	print("DEBUG: Переход на следующий уровень")
+	if level_number == 1:
+		# Переходим на уровень 2 через интро
+		LevelData.start_level(2)
+	elif level_number == 2:
+		# Для уровня 2 пока что пустая ссылка - позже будет переход на уровень 3
+		print("DEBUG: Кнопка 'Следующий уровень' для уровня 2 пока не реализована")
+		# TODO: Добавить переход на уровень 3
+	else:
+		# Для остальных уровней возвращаемся в главное меню
+		get_tree().change_scene_to_file("res://scenes/StartMenu.tscn")
 
 func _on_restart_pressed() -> void:
 	# Останавливаем таймер рекламы, если он активен
@@ -448,7 +642,7 @@ func _reset_game() -> void:
 	# Сброс игровых переменных
 	score = 0
 	_last_spawn_time = 0.0
-	_state = GameState.READY
+	_state = GameMode.READY
 	_update_score_label()
 	_hide_game_over()
 	
@@ -470,24 +664,24 @@ func _reset_game() -> void:
 	
 
 func _load_best_from_disk() -> void:
-	# Используем YandexSdk для загрузки данных
+	# Используем YandexSDK для загрузки данных
 	if OS.has_feature("yandex"):
-		YandexSdk.load_data(["best_score"])
+		YandexSDK.load_data(["best_score"])
 		# Подключаемся к сигналу загрузки данных
-		if not YandexSdk.data_loaded.is_connected(_on_data_loaded):
-			YandexSdk.data_loaded.connect(_on_data_loaded)
+		if not YandexSDK.data_loaded.is_connected(_on_data_loaded):
+			YandexSDK.data_loaded.connect(_on_data_loaded)
 		
 		# Загружаем статистику
-		YandexSdk.load_stats(["games_played", "total_score", "best_score"])
+		YandexSDK.load_stats(["games_played", "total_score", "best_score"])
 		# Подключаемся к сигналу загрузки статистики
-		if not YandexSdk.stats_loaded.is_connected(_on_stats_loaded):
-			YandexSdk.stats_loaded.connect(_on_stats_loaded)
+		if not YandexSDK.stats_loaded.is_connected(_on_stats_loaded):
+			YandexSDK.stats_loaded.connect(_on_stats_loaded)
 		
 		# Загружаем все данные
-		YandexSdk.load_all_data()
+		YandexSDK.load_all_data()
 		
 		# Загружаем всю статистику
-		YandexSdk.load_all_stats()
+		YandexSDK.load_all_stats()
 	else:
 		# Fallback на локальное сохранение для не-веб платформ
 		var cfg := ConfigFile.new()
@@ -498,9 +692,9 @@ func _load_best_from_disk() -> void:
 		_best = int(cfg.get_value(SAVE_SECTION, SAVE_KEY_BEST, 0))
 
 func _save_best_to_disk() -> void:
-	# Используем YandexSdk для сохранения данных
+	# Используем YandexSDK для сохранения данных
 	if OS.has_feature("yandex"):
-		YandexSdk.save_data({"best_score": _best}, true)
+		YandexSDK.save_data({"best_score": _best}, true)
 	else:
 		# Fallback на локальное сохранение для не-веб платформ
 		var cfg := ConfigFile.new()
@@ -518,16 +712,10 @@ func _update_score_label() -> void:
 		score_label.text = tr("ui.hud.score") + ": " + str(score)
 
 func _update_game_over_score() -> void:
-	"""Обновляет отображение счета в GameOverPanel"""
+	# Обновляет отображение счета в GameOverPanel
 	if game_over_score_label:
 		game_over_score_label.text = tr("ui.gameover.your_score") + ": " + str(score)
 
-func _update_player_rank_display(rank_text: String) -> void:
-	"""Обновляет отображение рейтинга игрока в GameOverPanel"""
-	if player_rank_label:
-		player_rank_label.text = rank_text
-		# Скрываем label, если текст пустой
-		player_rank_label.visible = not rank_text.is_empty()
 
 func _show_game_over() -> void:
 	game_over_panel.visible = true
@@ -537,49 +725,44 @@ func _hide_game_over() -> void:
 
 # ===== Яндекс SDK и реклама =====
 func _setup_yandex_sdk() -> void:
-	# Подключаем сигналы от официального YandexSdk
-	YandexSdk.interstitial_ad.connect(_on_interstitial_ad)
-	YandexSdk.rewarded_ad.connect(_on_rewarded_ad)
-	YandexSdk.leaderboard_initialized.connect(_on_leaderboard_initialized)
-	YandexSdk.leaderboard_entries_loaded.connect(_on_leaderboard_entries_loaded)
-	YandexSdk.leaderboard_player_entry_loaded.connect(_on_leaderboard_player_entry_loaded)
-	if not YandexSdk.stats_loaded.is_connected(_on_stats_loaded):
-		YandexSdk.stats_loaded.connect(_on_stats_loaded)
+	# Подключаем сигналы от официального YandexSDK
+	YandexSDK.interstitial_ad.connect(_on_interstitial_ad)
+	YandexSDK.rewarded_ad.connect(_on_rewarded_ad)
+	if not YandexSDK.stats_loaded.is_connected(_on_stats_loaded):
+		YandexSDK.stats_loaded.connect(_on_stats_loaded)
 	
 	# Запускаем асинхронную инициализацию
 	_initialize_yandex_sdk_async()
 
 func _initialize_yandex_sdk_async() -> void:
-	"""Асинхронная инициализация YandexSdk"""
+	# Асинхронная инициализация YandexSDK
 	# Проверяем, что игра еще не инициализируется
-	if not YandexSdk.is_game_initialization_started and not YandexSdk.is_game_initialized:
-		print("Game: Инициализируем YandexSdk игру...")
-		YandexSdk.init_game()
-		await YandexSdk.game_initialized
-		print("Game: YandexSdk игра инициализирована")
-	elif YandexSdk.is_game_initialized:
-		print("Game: YandexSdk игра уже инициализирована")
+	if not YandexSDK.is_game_initialization_started and not YandexSDK.is_game_initialized:
+		print("Game: Инициализируем YandexSDK игру...")
+		YandexSDK.init_game()
+		await YandexSDK.game_initialized
+		print("Game: YandexSDK игра инициализирована")
+	elif YandexSDK.is_game_initialized:
+		print("Game: YandexSDK игра уже инициализирована")
 	else:
-		print("Game: YandexSdk игра уже инициализируется, ждем...")
-		await YandexSdk.game_initialized
-		print("Game: YandexSdk игра инициализирована")
+		print("Game: YandexSDK игра уже инициализируется, ждем...")
+		await YandexSDK.game_initialized
+		print("Game: YandexSDK игра инициализирована")
 	
-	# Лидерборд инициализируется автоматически при первом вызове load_leaderboard_entries
-	print("Game: Лидерборд будет инициализирован автоматически при загрузке данных...")
 	
 	# Вызываем Game Ready API
 	print("Game: Вызываем Game Ready API...")
-	YandexSdk.game_ready()
+	YandexSDK.game_ready()
 	
 	# Game Ready API вызывается без дополнительных сигналов
 
 func _show_interstitial_ad() -> void:
-	"""Показывает Interstitial рекламу при Game Over"""
-	YandexSdk.show_interstitial_ad()
+	# Показывает Interstitial рекламу при Game Over
+	YandexSDK.show_interstitial_ad()
 
 
 func _on_interstitial_ad(result: String) -> void:
-	"""Обработчик результата Interstitial рекламы"""
+	# Обработчик результата Interstitial рекламы
 	match result:
 		"opened":
 			print("Interstitial реклама открыта")
@@ -589,7 +772,7 @@ func _on_interstitial_ad(result: String) -> void:
 			print("Ошибка показа Interstitial рекламы")
 
 func _on_rewarded_ad(result: String) -> void:
-	"""Обработчик результата Rewarded рекламы"""
+	# Обработчик результата Rewarded рекламы
 	match result:
 		"opened":
 			print("Rewarded реклама открыта")
@@ -600,60 +783,22 @@ func _on_rewarded_ad(result: String) -> void:
 		"error":
 			print("Ошибка показа Rewarded рекламы")
 
-func _on_leaderboard_initialized() -> void:
-	"""Обработчик инициализации лидерборда"""
-	print("Game: Лидерборд инициализирован")
-	print("Game: YandexSdk.is_leaderboard_initialized = ", YandexSdk.is_leaderboard_initialized)
-	_leaderboard_ready = true
 
 func _on_data_loaded(data: Dictionary) -> void:
-	"""Обработчик загрузки данных от YandexSdk"""
+	# Обработчик загрузки данных от YandexSDK
 	print("Game: Данные загружены: ", data)
 	if data.has("best_score"):
 		_best = int(data["best_score"])
 		print("Game: Лучший результат загружен: ", _best)
 
 func _on_stats_loaded(stats: Dictionary) -> void:
-	"""Обработчик загрузки статистики от YandexSdk"""
+	# Обработчик загрузки статистики от YandexSDK
 	print("Game: Статистика загружена: ", stats)
 	if stats.has("best_score"):
 		_best = int(stats["best_score"])
 		print("Game: Лучший результат из статистики: ", _best)
 
-func _on_leaderboard_entries_loaded(data: Dictionary) -> void:
-	"""Обработчик загрузки записей лидерборда"""
-	print("Game: Записи лидерборда загружены: ", data)
-	# Здесь можно обновить UI лидерборда с полученными данными
 
-func _on_leaderboard_player_entry_loaded(data: Dictionary) -> void:
-	"""Обработчик загрузки записи игрока в лидерборде"""
-	print("Game: Запись игрока в лидерборде загружена: ", data)
-	
-	# Проверяем, что данные содержат необходимую информацию
-	if data.is_empty():
-		print("Game: Запись игрока в лидерборде отсутствует - игрок еще не участвовал в рейтинге")
-		_update_player_rank_display("")
-		return
-	
-	# Извлекаем рейтинг и лучший результат
-	var rank: int = data.get("rank", 0)
-	var score: int = data.get("score", 0)
-	
-	# Проверяем наличие ключей в данных
-	if not data.has("rank") or not data.has("score"):
-		print("Game: Неполные данные записи игрока в лидерборде")
-		_update_player_rank_display("")
-		return
-	
-	if rank > 0 and score > 0:
-		# Отображаем рейтинг и лучший результат
-		var rank_text: String = "Ваш рейтинг: #" + str(rank) + " (лучший результат: " + str(score) + ")"
-		_update_player_rank_display(rank_text)
-		print("Game: Рейтинг игрока: #", rank, ", лучший результат: ", score)
-	else:
-		# Если нет валидных данных, скрываем отображение
-		print("Game: Нет валидных данных о рейтинге игрока (rank: ", rank, ", score: ", score, ")")
-		_update_player_rank_display("")
 
 
 func _save_game_stats() -> void:
@@ -664,105 +809,16 @@ func _save_game_stats() -> void:
 			"total_score": score,
 			"best_score": _best
 		}
-		YandexSdk.save_stats(stats)
+		YandexSDK.save_stats(stats)
 		print("Game: Статистика сохранена: ", stats)
 		
 		# Инкрементируем счетчик игр
 		var increments = {
 			"games_played": 1
 		}
-		YandexSdk.increment_stats(increments)
+		YandexSDK.increment_stats(increments)
 		print("Game: Статистика инкрементирована: ", increments)
 
-# ===== Лидерборд =====
-func _submit_score_to_leaderboard() -> void:
-	"""Отправляет результат игрока в лидерборд"""
-	print("Game: Отправка результата в лидерборд: ", score, " очков")
-	
-	# Проверяем, что мы на веб-платформе
-	if not OS.has_feature("yandex"):
-		print("Game: Не веб-платформа, лидерборд недоступен")
-		return
-	
-	# Лидерборд инициализируется автоматически при первом вызове save_leaderboard_score
-	print("Game: Лидерборд будет инициализирован автоматически...")
-	_leaderboard_ready = true
-	
-	# Сначала отключаем существующие соединения, если они есть
-	if YandexSdk.check_auth.is_connected(_on_auth_checked):
-		YandexSdk.check_auth.disconnect(_on_auth_checked)
-	
-	# Подключаемся к сигналу проверки авторизации
-	YandexSdk.check_auth.connect(_on_auth_checked)
-	
-	# Затем вызываем проверку авторизации
-	YandexSdk.check_is_authorized()
-
-func _on_auth_checked(is_authorized: bool) -> void:
-	"""Обработчик проверки авторизации"""
-	print("Game: Авторизация проверена: ", is_authorized)
-	
-	# Отключаем сигнал после получения результата
-	if YandexSdk.check_auth.is_connected(_on_auth_checked):
-		YandexSdk.check_auth.disconnect(_on_auth_checked)
-	
-	if is_authorized:
-		# Отправляем результат в лидерборд
-		YandexSdk.save_leaderboard_score("donuttowerleaderboard", score)
-		# После сохранения загружаем запись игрока
-		_load_player_leaderboard_entry()
-	else:
-		print("Game: Пользователь не авторизован, результат не отправлен в лидерборд")
-		# Можно предложить авторизацию
-		YandexSdk.open_auth_dialog()
-
-func _load_and_show_leaderboard() -> void:
-	"""Загружает и показывает лидерборд"""
-	# Загружаем лидерборд через LeaderboardPanel
-	if leaderboard_panel != null and leaderboard_panel.has_method("load_leaderboard"):
-		leaderboard_panel.load_leaderboard()
-	else:
-		print("Game: LeaderboardPanel не найден или не имеет метода load_leaderboard")
-
-func _load_player_leaderboard_entry() -> void:
-	"""Загружает запись игрока в лидерборде"""
-	# Проверяем, что мы на веб-платформе
-	if not OS.has_feature("yandex"):
-		print("Game: Не веб-платформа, лидерборд недоступен")
-		_update_player_rank_display("")
-		return
-	
-	# Лидерборд инициализируется автоматически при первом вызове load_leaderboard_player_entry
-	print("Game: Лидерборд будет инициализирован автоматически для загрузки записи игрока...")
-	_leaderboard_ready = true
-	
-	# Сначала отключаем существующие соединения, если они есть
-	if YandexSdk.check_auth.is_connected(_on_auth_checked_for_player_entry):
-		YandexSdk.check_auth.disconnect(_on_auth_checked_for_player_entry)
-	
-	# Подключаемся к сигналу проверки авторизации
-	YandexSdk.check_auth.connect(_on_auth_checked_for_player_entry)
-	
-	# Затем вызываем проверку авторизации
-	YandexSdk.check_is_authorized()
-
-func _on_auth_checked_for_player_entry(is_authorized: bool) -> void:
-	"""Обработчик проверки авторизации для загрузки записи игрока"""
-	print("Game: Авторизация для загрузки записи игрока проверена: ", is_authorized)
-	
-	# Отключаем сигнал после получения результата
-	if YandexSdk.check_auth.is_connected(_on_auth_checked_for_player_entry):
-		YandexSdk.check_auth.disconnect(_on_auth_checked_for_player_entry)
-	
-	if is_authorized:
-		# Загружаем запись игрока в лидерборде
-		print("Game: Загружаем запись игрока в лидерборде...")
-		YandexSdk.load_leaderboard_player_entry("donuttowerleaderboard")
-	else:
-		print("Game: Пользователь не авторизован, запись игрока не загружена")
-		_update_player_rank_display("")
-
-# Обработчики для лидерборда больше не нужны, так как официальный SDK не возвращает сигналы для save_leaderboard_score
 
 # ===== Таймер задержки рекламы =====
 func _setup_ad_delay_timer() -> void:
@@ -814,7 +870,7 @@ func _on_language_changed(_language_code: String) -> void:
 	_update_all_ui_texts()
 
 func _update_all_ui_texts() -> void:
-	"""Обновляет все тексты в игровом интерфейсе"""
+	# Обновляет все тексты в игровом интерфейсе
 	# Обновляем кнопку меню
 	if menu_button:
 		menu_button.text = tr("ui.menu.button")
@@ -824,31 +880,8 @@ func _update_all_ui_texts() -> void:
 	if game_over_label:
 		game_over_label.text = tr("ui.gameover.title")
 	
-	# Обновляем тексты лидерборда
-	_update_leaderboard_texts()
 	
-	# Обновляем отображение рейтинга игрока (если есть данные)
-	if player_rank_label and player_rank_label.visible:
-		# Текст рейтинга уже содержит переводы, поэтому просто обновляем видимость
-		pass
 
-func _update_leaderboard_texts() -> void:
-	"""Обновляет тексты лидерборда при смене языка"""
-	if leaderboard_panel:
-		# Обновляем заголовок лидерборда
-		var title_label = leaderboard_panel.get_node("TitleLabel")
-		if title_label:
-			title_label.text = tr("ui.leaderboard.title")
-		
-		# Обновляем текст загрузки
-		var loading_label = leaderboard_panel.get_node("LoadingLabel")
-		if loading_label:
-			loading_label.text = tr("ui.leaderboard.loading")
-		
-		# Обновляем текст ошибки
-		var error_label = leaderboard_panel.get_node("ErrorLabel")
-		if error_label:
-			error_label.text = tr("ui.leaderboard.error")
 
 func check_touch_chain() -> bool:
 	if combo_lock:
@@ -940,7 +973,7 @@ func _apply_chain_bonus_and_remove(indices: Array) -> void:
 	
 	# Количество очков равно количеству удаляемых пончиков
 	var bonus_points: int = donuts_to_animate.size()
-	score += bonus_points
+	add_score(bonus_points)
 	_update_score_ui()
 	
 	# Анимируем все собранные объекты

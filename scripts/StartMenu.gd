@@ -16,9 +16,9 @@ func _ready() -> void:
 		_update_language_button()
 	
 	# Инициализируем игрока для работы с лидербордом
-	if YandexSdk:
-		YandexSdk.init_player()
-		await YandexSdk.player_initialized
+	if YandexSDK:
+		YandexSDK.init_player()
+		await YandexSDK.player_initialized
 		print("StartMenu: Игрок инициализирован для лидерборда")
 	
 	# Проверяем наличие MusicManager
@@ -41,8 +41,8 @@ func _ready() -> void:
 	_setup_music_controls()
 
 func _on_start_button_pressed():
-	# Переход к игровой сцене
-	get_tree().change_scene_to_file("res://scenes/Game.tscn")
+	# Запускаем первый уровень с превью
+	LevelData.start_level(1)
 
 func _on_language_button_pressed():
 	"""Обработчик нажатия кнопки смены языка"""

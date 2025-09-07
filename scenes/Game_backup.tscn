@@ -1,0 +1,199 @@
+﻿[gd_scene load_steps=13 format=3 uid="uid://cd48e7gfx5qsd"]
+
+[ext_resource type="Script" uid="uid://byv6i8g71nd1c" path="res://scripts/Game.gd" id="1_qbsmt"]
+[ext_resource type="PackedScene" uid="uid://cqtbisskdn4xt" path="res://scenes/spawner.tscn" id="2_cpr0p"]
+[ext_resource type="Texture2D" uid="uid://bdy6pbxsclfci" path="res://assets/bg/Woll2.png" id="2_kiw3p"]
+[ext_resource type="Texture2D" uid="uid://bkfhx25foxsic" path="res://assets/bg/Woll1.png" id="3_400sg"]
+[ext_resource type="Texture2D" uid="uid://cxonxat8jv4ng" path="res://assets/bg/bg_gradient_720x1280.png" id="3_cpr0p"]
+[ext_resource type="AudioStream" uid="uid://d30ly4wm7or8c" path="res://assets/music/music.mp3" id="8_400sg"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_kiw3p"]
+size = Vector2(29.1249, 39.227)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_400sg"]
+size = Vector2(12.4818, 19.1169)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_uwrxv"]
+size = Vector2(720, 132)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_score_label"]
+bg_color = Color(1, 0.7, 0.3, 0.9)
+corner_radius_top_left = 20
+corner_radius_top_right = 20
+corner_radius_bottom_right = 20
+corner_radius_bottom_left = 20
+shadow_color = Color(0, 0, 0, 0.4)
+shadow_size = 6
+shadow_offset = Vector2(0, 3)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_hover"]
+bg_color = Color(1, 0.8, 0.4, 1)
+corner_radius_top_left = 25
+corner_radius_top_right = 25
+corner_radius_bottom_right = 25
+corner_radius_bottom_left = 25
+shadow_color = Color(0, 0, 0, 0.4)
+shadow_size = 10
+shadow_offset = Vector2(0, 5)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button"]
+bg_color = Color(1, 0.6, 0.2, 1)
+corner_radius_top_left = 25
+corner_radius_top_right = 25
+corner_radius_bottom_right = 25
+corner_radius_bottom_left = 25
+shadow_color = Color(0, 0, 0, 0.3)
+shadow_size = 8
+shadow_offset = Vector2(0, 4)
+
+[node name="Game" type="Node2D"]
+script = ExtResource("1_qbsmt")
+
+[node name="LeftWall" type="StaticBody2D" parent="."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LeftWall"]
+position = Vector2(660, 1114)
+rotation = 3.14159
+scale = Vector2(3.29519, -5.8066)
+shape = SubResource("RectangleShape2D_kiw3p")
+
+[node name="Sprite2D" type="Sprite2D" parent="LeftWall"]
+position = Vector2(661, 1071)
+scale = Vector2(0.17, 0.17)
+texture = ExtResource("2_kiw3p")
+
+[node name="RightWall" type="StaticBody2D" parent="."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="RightWall"]
+position = Vector2(54.5, 1091.21)
+scale = Vector2(7.13036, -5.9857)
+shape = SubResource("RectangleShape2D_400sg")
+
+[node name="Sprite2D" type="Sprite2D" parent="RightWall"]
+position = Vector2(55, 1079)
+scale = Vector2(0.15, 0.15)
+texture = ExtResource("3_400sg")
+
+[node name="Ground" type="StaticBody2D" parent="."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Ground"]
+position = Vector2(360, 1214)
+shape = SubResource("RectangleShape2D_uwrxv")
+
+[node name="Spawner" parent="." instance=ExtResource("2_cpr0p")]
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="UIRoot" type="Control" parent="UI"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ScoreLabel" type="Label" parent="UI/UIRoot"]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -180.0
+offset_top = 20.0
+offset_right = 180.0
+offset_bottom = 90.0
+grow_horizontal = 2
+mouse_filter = 0
+theme_override_colors/font_color = Color(0.2, 0.1, 0.05, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.6)
+theme_override_font_sizes/font_size = 28
+theme_override_styles/normal = SubResource("StyleBoxFlat_score_label")
+text = "0"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="GameOverPanel" type="Control" parent="UI/UIRoot"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Background" type="ColorRect" parent="UI/UIRoot/GameOverPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.7)
+
+[node name="MainContainer" type="VBoxContainer" parent="UI/UIRoot/GameOverPanel"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -100.0
+offset_right = 200.0
+offset_bottom = 100.0
+grow_horizontal = 2
+grow_vertical = 2
+alignment = 1
+
+[node name="GameOverLabel" type="Label" parent="UI/UIRoot/GameOverPanel/MainContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.8)
+theme_override_font_sizes/font_size = 32
+text = "Игра окончена!"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ScoreLabel" type="Label" parent="UI/UIRoot/GameOverPanel/MainContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.8, 0.2, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.8)
+theme_override_font_sizes/font_size = 24
+text = "Счёт: 0"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="MenuButton" type="Button" parent="UI/UIRoot/GameOverPanel/MainContainer"]
+custom_minimum_size = Vector2(300, 80)
+layout_mode = 2
+theme_override_colors/font_hover_color = Color(0.2, 0.1, 0.05, 1)
+theme_override_colors/font_color = Color(0.2, 0.1, 0.05, 1)
+theme_override_colors/font_pressed_color = Color(0.2, 0.1, 0.05, 1)
+theme_override_font_sizes/font_size = 24
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button")
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+text = "Меню"
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(360, 640)
+limit_left = 0
+limit_top = -100000
+limit_right = 720
+limit_bottom = 1280
+limit_smoothed = true
+position_smoothing_enabled = true
+position_smoothing_speed = 8.0
+
+[node name="Background" type="Sprite2D" parent="."]
+z_index = -100
+position = Vector2(337, 575)
+texture = ExtResource("3_cpr0p")
+
+[node name="YandexSDK" type="Node" parent="."]
+
+[node name="MusicPlayer" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("8_400sg")
+volume_db = -21.551
+autoplay = true
+parameters/looping = true
+
+[connection signal="pressed" from="UI/UIRoot/GameOverPanel/MainContainer/MenuButton" to="." method="_on_restart_pressed"]
