@@ -1,23 +1,23 @@
-[gd_scene load_steps=13 format=3 uid="uid://fjncv25a4g5q"]
+[gd_scene load_steps=13 format=3 uid="uid://g10cxj53nsor"]
 
-[ext_resource type="Script" uid="uid://byv6i8g71nd1c" path="res://scripts/Game.gd" id="1_qbsmt"]
-[ext_resource type="Texture2D" uid="uid://ul4j3bqaf5f7" path="res://assets/bg/Woll_2_1.png" id="2_av2qw"]
+[ext_resource type="Script" uid="uid://blkfpf7e4dna5" path="res://scripts/Game_level_3.gd" id="1_qbsmt"]
 [ext_resource type="PackedScene" uid="uid://cqtbisskdn4xt" path="res://scenes/spawner.tscn" id="2_cpr0p"]
-[ext_resource type="Texture2D" uid="uid://c412k2ylixcsj" path="res://assets/bg/Woll_2_2.png" id="3_34mnu"]
-[ext_resource type="Texture2D" uid="uid://dlm1p4rq7olg4" path="res://assets/bg/bg_lvl_2.png" id="5_av2qw"]
+[ext_resource type="Texture2D" uid="uid://cvhr76yxgkmer" path="res://assets/bg/Woll_3_1.png" id="2_fblla"]
+[ext_resource type="Texture2D" uid="uid://di7dfa4t4lmbn" path="res://assets/bg/Woll_3_2.png" id="3_dc3b1"]
+[ext_resource type="Texture2D" uid="uid://bl2lkf8hhve6f" path="res://assets/bg/bg_lvl_3.png" id="5_fblla"]
 [ext_resource type="AudioStream" uid="uid://cntvatc4pm83e" path="res://assets/music/music.mp3" id="7_400sg"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_kiw3p"]
-size = Vector2(24.8846, 37.3713)
+size = Vector2(29.795, 38.1807)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_400sg"]
-size = Vector2(14.1648, 48.6513)
+size = Vector2(21.1771, 36.825)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_uwrxv"]
 size = Vector2(720, 132)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_score_label"]
-bg_color = Color(1, 0.7, 0.3, 0.9)
+bg_color = Color(0.2, 0.3, 0.6, 0.9)
 corner_radius_top_left = 20
 corner_radius_top_right = 20
 corner_radius_bottom_right = 20
@@ -46,37 +46,37 @@ shadow_color = Color(0, 0, 0, 0.3)
 shadow_size = 8
 shadow_offset = Vector2(0, 4)
 
-[node name="Game3" type="Node2D"]
+[node name="Game" type="Node2D"]
 script = ExtResource("1_qbsmt")
-level_number = 2
+level_number = 3
 
 [node name="LeftWall" type="StaticBody2D" parent="."]
-position = Vector2(2, 1)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="LeftWall"]
-position = Vector2(660, 1035.5)
+position = Vector2(89.5189, 859.644)
 rotation = 3.14159
-scale = Vector2(3.29519, -5.8066)
+scale = Vector2(5.87223, -10.5103)
 shape = SubResource("RectangleShape2D_kiw3p")
 
 [node name="Sprite2D" type="Sprite2D" parent="LeftWall"]
-position = Vector2(656, 1046)
-scale = Vector2(0.2, 0.2)
-texture = ExtResource("2_av2qw")
+position = Vector2(127.607, 840.617)
+scale = Vector2(0.374233, 0.380111)
+texture = ExtResource("2_fblla")
 
 [node name="RightWall" type="StaticBody2D" parent="."]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="RightWall"]
-position = Vector2(87.5, 1027.39)
+position = Vector2(644.9, 988.612)
 scale = Vector2(7.13036, -5.9857)
 shape = SubResource("RectangleShape2D_400sg")
 
 [node name="Sprite2D" type="Sprite2D" parent="RightWall"]
-position = Vector2(76, 1040)
-scale = Vector2(0.24, 0.24)
-texture = ExtResource("3_34mnu")
+position = Vector2(641.4, 907.4)
+scale = Vector2(0.2, 0.2)
+texture = ExtResource("3_dc3b1")
 
 [node name="Ground" type="StaticBody2D" parent="."]
+scale = Vector2(1, 0.869444)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Ground"]
 position = Vector2(360, 1214)
@@ -201,7 +201,7 @@ position_smoothing_speed = 8.0
 [node name="Background" type="Sprite2D" parent="."]
 z_index = -100
 position = Vector2(337, 575)
-texture = ExtResource("5_av2qw")
+texture = ExtResource("5_fblla")
 
 [node name="YandexSDK" type="Node" parent="."]
 

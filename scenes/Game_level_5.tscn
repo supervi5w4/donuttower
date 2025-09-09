@@ -1,23 +1,23 @@
-[gd_scene load_steps=13 format=3 uid="uid://fjncv25a4g5q"]
+[gd_scene load_steps=13 format=3 uid="uid://78i521oock0h"]
 
-[ext_resource type="Script" uid="uid://byv6i8g71nd1c" path="res://scripts/Game.gd" id="1_qbsmt"]
-[ext_resource type="Texture2D" uid="uid://ul4j3bqaf5f7" path="res://assets/bg/Woll_2_1.png" id="2_av2qw"]
-[ext_resource type="PackedScene" uid="uid://cqtbisskdn4xt" path="res://scenes/spawner.tscn" id="2_cpr0p"]
-[ext_resource type="Texture2D" uid="uid://c412k2ylixcsj" path="res://assets/bg/Woll_2_2.png" id="3_34mnu"]
-[ext_resource type="Texture2D" uid="uid://dlm1p4rq7olg4" path="res://assets/bg/bg_lvl_2.png" id="5_av2qw"]
-[ext_resource type="AudioStream" uid="uid://cntvatc4pm83e" path="res://assets/music/music.mp3" id="7_400sg"]
+[ext_resource type="Script" uid="uid://16ivbh35r11b" path="res://scripts/Game_level_5.gd" id="1_sand_level"]
+[ext_resource type="Texture2D" uid="uid://3tka04miqt2d" path="res://assets/bg/Woll_5_1.png" id="2_dq7bt"]
+[ext_resource type="PackedScene" uid="uid://cqtbisskdn4xt" path="res://scenes/spawner.tscn" id="2_spawner"]
+[ext_resource type="Texture2D" uid="uid://dknoqkxtvl26l" path="res://assets/bg/Woll_5_2.png" id="3_dq7bt"]
+[ext_resource type="Texture2D" uid="uid://7g3g4i4o6qhb" path="res://assets/bg/bg_lvl_5.png" id="5_dq7bt"]
+[ext_resource type="AudioStream" uid="uid://cntvatc4pm83e" path="res://assets/music/music.mp3" id="7_music"]
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_kiw3p"]
-size = Vector2(24.8846, 37.3713)
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_left_wall"]
+size = Vector2(39.4514, 69.901)
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_400sg"]
-size = Vector2(14.1648, 48.6513)
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_right_wall"]
+size = Vector2(22.0886, 35.9146)
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_uwrxv"]
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_ground"]
 size = Vector2(720, 132)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_score_label"]
-bg_color = Color(1, 0.7, 0.3, 0.9)
+bg_color = Color(0.3, 0.2, 0.1, 0.9)
 corner_radius_top_left = 20
 corner_radius_top_right = 20
 corner_radius_bottom_right = 20
@@ -37,7 +37,7 @@ shadow_size = 10
 shadow_offset = Vector2(0, 5)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button"]
-bg_color = Color(1, 0.6, 0.2, 1)
+bg_color = Color(0.9, 0.7, 0.3, 1)
 corner_radius_top_left = 25
 corner_radius_top_right = 25
 corner_radius_bottom_right = 25
@@ -46,43 +46,42 @@ shadow_color = Color(0, 0, 0, 0.3)
 shadow_size = 8
 shadow_offset = Vector2(0, 4)
 
-[node name="Game3" type="Node2D"]
-script = ExtResource("1_qbsmt")
-level_number = 2
+[node name="Game2" type="Node2D"]
+script = ExtResource("1_sand_level")
+level_number = 5
 
 [node name="LeftWall" type="StaticBody2D" parent="."]
-position = Vector2(2, 1)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="LeftWall"]
-position = Vector2(660, 1035.5)
+position = Vector2(621.001, 1024.94)
 rotation = 3.14159
 scale = Vector2(3.29519, -5.8066)
-shape = SubResource("RectangleShape2D_kiw3p")
+shape = SubResource("RectangleShape2D_left_wall")
 
 [node name="Sprite2D" type="Sprite2D" parent="LeftWall"]
-position = Vector2(656, 1046)
-scale = Vector2(0.2, 0.2)
-texture = ExtResource("2_av2qw")
+position = Vector2(614, 987)
+scale = Vector2(0.3, 0.3)
+texture = ExtResource("2_dq7bt")
 
 [node name="RightWall" type="StaticBody2D" parent="."]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="RightWall"]
-position = Vector2(87.5, 1027.39)
-scale = Vector2(7.13036, -5.9857)
-shape = SubResource("RectangleShape2D_400sg")
+position = Vector2(105.25, 1046.16)
+scale = Vector2(7.13036, -6.46879)
+shape = SubResource("RectangleShape2D_right_wall")
 
 [node name="Sprite2D" type="Sprite2D" parent="RightWall"]
-position = Vector2(76, 1040)
-scale = Vector2(0.24, 0.24)
-texture = ExtResource("3_34mnu")
+position = Vector2(110, 1053)
+scale = Vector2(0.25, 0.25)
+texture = ExtResource("3_dq7bt")
 
 [node name="Ground" type="StaticBody2D" parent="."]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Ground"]
 position = Vector2(360, 1214)
-shape = SubResource("RectangleShape2D_uwrxv")
+shape = SubResource("RectangleShape2D_ground")
 
-[node name="Spawner" parent="." instance=ExtResource("2_cpr0p")]
+[node name="Spawner" parent="." instance=ExtResource("2_spawner")]
 
 [node name="UI" type="CanvasLayer" parent="."]
 
@@ -183,7 +182,7 @@ theme_override_colors/font_hover_color = Color(0.2, 0.1, 0.05, 1)
 theme_override_colors/font_color = Color(0.2, 0.1, 0.05, 1)
 theme_override_colors/font_pressed_color = Color(0.2, 0.1, 0.05, 1)
 theme_override_font_sizes/font_size = 24
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button")
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
 text = "Меню"
@@ -201,12 +200,12 @@ position_smoothing_speed = 8.0
 [node name="Background" type="Sprite2D" parent="."]
 z_index = -100
 position = Vector2(337, 575)
-texture = ExtResource("5_av2qw")
+texture = ExtResource("5_dq7bt")
 
 [node name="YandexSDK" type="Node" parent="."]
 
 [node name="MusicPlayer" type="AudioStreamPlayer" parent="."]
-stream = ExtResource("7_400sg")
+stream = ExtResource("7_music")
 volume_db = -21.551
 autoplay = true
 parameters/looping = true

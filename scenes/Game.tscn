@@ -8,10 +8,10 @@
 [ext_resource type="AudioStream" uid="uid://cntvatc4pm83e" path="res://assets/music/music.mp3" id="8_400sg"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_kiw3p"]
-size = Vector2(54.6244, 170.131)
+size = Vector2(44.0034, 33.3902)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_400sg"]
-size = Vector2(33.9318, 167.138)
+size = Vector2(21.4772, 30.1947)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_uwrxv"]
 size = Vector2(720, 132)
@@ -52,7 +52,7 @@ script = ExtResource("1_qbsmt")
 [node name="LeftWall" type="StaticBody2D" parent="."]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="LeftWall"]
-position = Vector2(618, 651.942)
+position = Vector2(635.5, 1048.94)
 rotation = 3.14159
 scale = Vector2(3.29519, -5.8066)
 shape = SubResource("RectangleShape2D_kiw3p")
@@ -65,7 +65,7 @@ texture = ExtResource("2_kiw3p")
 [node name="RightWall" type="StaticBody2D" parent="."]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="RightWall"]
-position = Vector2(133.935, 654.078)
+position = Vector2(92.4356, 1058.08)
 rotation = 3.14159
 scale = Vector2(6.66425, 5.90026)
 shape = SubResource("RectangleShape2D_400sg")
@@ -92,6 +92,36 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+
+[node name="LivesUI" type="HBoxContainer" parent="UI/UIRoot"]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -200.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = 80.0
+grow_horizontal = 0
+grow_vertical = 0
+size_flags_horizontal = 0
+size_flags_vertical = 0
+theme_override_constants/separation = 8
+
+[node name="Heart1" type="TextureRect" parent="UI/UIRoot/LivesUI"]
+texture_filter = 1
+custom_minimum_size = Vector2(48, 48)
+layout_mode = 2
+
+[node name="Heart2" type="TextureRect" parent="UI/UIRoot/LivesUI"]
+texture_filter = 1
+custom_minimum_size = Vector2(48, 48)
+layout_mode = 2
+
+[node name="Heart3" type="TextureRect" parent="UI/UIRoot/LivesUI"]
+texture_filter = 1
+custom_minimum_size = Vector2(48, 48)
+layout_mode = 2
 
 [node name="ScoreLabel" type="Label" parent="UI/UIRoot"]
 layout_mode = 1
