@@ -10,7 +10,7 @@ const VIRT_W := 720.0
 const VIRT_H := 1280.0
 
 const POOL_SIZE := 24
-const SPAWN_COOLDOWN := 0.08
+const SPAWN_COOLDOWN := 0.05  # УВЕЛИЧЕННАЯ ПОДКРУТКА: уменьшен кулдаун с 0.08 до 0.05
 const DONUT_SCENE := preload("res://scenes/Donut.tscn")
 
 # Базовый уровень пола для пересчёта вершины башни
@@ -30,11 +30,16 @@ const SAVE_KEY_BEST := "best"
 
 @export var initial_cart_speed_level1: float = 300.0
 @export var initial_cart_speed_level2: float = 380.0
+@export var initial_cart_speed_level3: float = 380.0
+@export var initial_cart_speed_level4: float = 400.0
 
 @export var wall_scale_x_level1: float = 1.0
 @export var wall_scale_x_level2: float = 0.8
+@export var wall_scale_x_level3: float = 0.6
+@export var wall_scale_x_level4: float = 0.5
 
 signal score_changed(new_score: int)
+signal donut_missed
 
 enum GameMode { READY, PLAY, GAMEOVER }
 
@@ -85,28 +90,26 @@ const CAM_MARGIN_MIN := 0.35           # 35% высоты экрана
 const CAM_MARGIN_MAX := 0.45           # до 45% при большом счёте
 const CAM_MARGIN_SCORE_CAP := 20       # к ~20 очкам достигаем CAM_MARGIN_MAX
 
-const DAMP_BASE := 0.70                # angular_damp базовый
-const DAMP_MAX := 1.00                 # верхняя граница
-const DAMP_SCORE_RATE := 0.01          # +0.01 за очко (к ~30 очкам ≈1.0)
+# УВЕЛИЧЕННАЯ ПОДКРУТКА: более сильное затухание вращения
+const DAMP_BASE := 0.85                # angular_damp базовый (увеличено с 0.70)
+const DAMP_MAX := 1.20                 # верхняя граница (увеличено с 1.00)
+const DAMP_SCORE_RATE := 0.015         # +0.015 за очко (увеличено с 0.01)
 
-const SETTLE_LIN_BASE := 8.0           # базовый линейный порог
-const SETTLE_LIN_MAX := 12.0           # предел "мягкости" линейного порога
-const SETTLE_ANG_BASE := 0.6           # базовый угловой порог
-const SETTLE_ANG_MAX := 1.0            # предел "мягкости" углового порога
-const SETTLE_RATE := 0.10              # вклад в линейный порог на очко
-const SETTLE_ANG_RATE := 0.02          # вклад в угловой порог на очко
+# УВЕЛИЧЕННАЯ ПОДКРУТКА: более мягкие пороги успокоения
+const SETTLE_LIN_BASE := 12.0          # базовый линейный порог (увеличено с 8.0)
+const SETTLE_LIN_MAX := 18.0           # предел "мягкости" линейного порога (увеличено с 12.0)
+const SETTLE_ANG_BASE := 1.0           # базовый угловой порог (увеличено с 0.6)
+const SETTLE_ANG_MAX := 1.5            # предел "мягкости" углового порога (увеличено с 1.0)
+const SETTLE_RATE := 0.15              # вклад в линейный порог на очко (увеличено с 0.10)
+const SETTLE_ANG_RATE := 0.03          # вклад в угловой порог на очко (увеличено с 0.02)
 
 func _ready() -> void:
-	print("DEBUG: Game._ready() - начинаем инициализацию")
 	get_node("/root/GameStateManager").reset_for_level(level_number)
 	
 	# Проверяем, есть ли GameOverPanel в сцене
 	var panel := get_node_or_null("UI/UIRoot/GameOverPanel")
-	print("DEBUG: Game._ready() - GameOverPanel найдена: ", panel)
 	if panel:
-		print("DEBUG: Game._ready() - GameOverPanel имеет скрипт: ", panel.get_script() != null)
-		print("DEBUG: Game._ready() - GameOverPanel в группе: ", panel.is_in_group("GameOverPanel"))
-		print("DEBUG: Game._ready() - GameOverPanel имеет метод show_game_over: ", "show_game_over" in panel)
+		pass
 	
 	_level_ui = LevelUI.new()
 	add_child(_level_ui)
@@ -138,12 +141,23 @@ func _ready() -> void:
 	# Применить сложность на старте
 	_recalc_difficulty()
 	
+	# Инициализируем SpawnDirector для уровня
+	SpawnDirector.init_seed(Time.get_unix_time_from_system())
+	SpawnDirector.reset(level_number)
+	
 	# Выбираем первый стиль и обновляем превью
 	_select_next_style()
 	_update_preview()
 	
 	# Настраиваем панель Game Over
 	_setup_game_over_panel()
+	
+	# Подключаем сигнал donut_missed
+	if has_signal("donut_missed"):
+		connect("donut_missed", Callable(self, "_on_donut_missed_signal"))
+	
+	# Инициализируем состояние уровня
+	_reset_level_state()
 
 func _process(_delta: float) -> void:
 	_cleanup_fallen()
@@ -161,6 +175,10 @@ func _input(event: InputEvent) -> void:
 		_on_tap(event.position)
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		_on_tap(event.position)
+	elif event is InputEventKey and event.pressed:
+		# Тестовая клавиша T для проверки SpawnDirector
+		if event.keycode == KEY_T:
+			_test_spawn_director()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch and event.pressed:
@@ -213,35 +231,44 @@ func _cooldown_ready() -> bool:
 	return t - _last_spawn_time >= SPAWN_COOLDOWN
 
 func _select_next_style() -> void:
-	# Получаем все доступные стили из Donut.DONUT_TEXTURES
-	var available_styles: Array[String] = []
-	for key in Donut.DONUT_TEXTURES.keys():
-		available_styles.append(key as String)
-	
-	if available_styles.is_empty():
-		next_style = "pink"
-		return
-	
-	# Выбираем случайный стиль
-	var random_index: int = randi() % available_styles.size()
-	next_style = available_styles[random_index]
+	# Используем SpawnDirector для выбора следующего типа пончика
+	next_style = SpawnDirector.get_next_donut_type(level_number)
 
 func _update_preview() -> void:
 	if preview != null and preview.has_method("set_texture"):
-		# Получаем текстуру по стилю и передаем напрямую
-		if Donut.DONUT_TEXTURES.has(next_style):
-			var texture: Texture2D = Donut.DONUT_TEXTURES[next_style]
-			preview.set_texture(texture)
+		# Получаем текстуру через SpawnDirector
+		var texture: Texture2D = SpawnDirector.get_next_donut_texture(next_style)
+		preview.set_texture(texture)
 
 func _apply_level_params() -> void:
 	var cart := get_node_or_null(cart_path) if cart_path != NodePath("") else null
 	if cart and "set_speed" in cart:
-		var sp := initial_cart_speed_level1 if level_number == 1 else initial_cart_speed_level2
+		var sp: float
+		if level_number == 1:
+			sp = initial_cart_speed_level1
+		elif level_number == 2:
+			sp = initial_cart_speed_level2
+		elif level_number == 3:
+			sp = initial_cart_speed_level3
+		elif level_number == 4:
+			sp = initial_cart_speed_level4
+		else:
+			sp = initial_cart_speed_level1
 		cart.set_speed(sp)
 
 	var wl := get_node_or_null(wall_left_path) if wall_left_path != NodePath("") else null
 	var wr := get_node_or_null(wall_right_path) if wall_right_path != NodePath("") else null
-	var sx := wall_scale_x_level1 if level_number == 1 else wall_scale_x_level2
+	var sx: float
+	if level_number == 1:
+		sx = wall_scale_x_level1
+	elif level_number == 2:
+		sx = wall_scale_x_level2
+	elif level_number == 3:
+		sx = wall_scale_x_level3
+	elif level_number == 4:
+		sx = wall_scale_x_level4
+	else:
+		sx = wall_scale_x_level1
 	if wl:
 		wl.scale.x = sx
 	if wr:
@@ -260,13 +287,21 @@ func add_score(delta: int) -> void:
 		get_node("/root/GameStateManager").unlock_level(2)
 		_open_win_panel()
 	elif level_number == 2 and score >= score_to_unlock:
-		# Для уровня 2 пока что просто показываем панель победы
-		# В будущем здесь можно добавить разблокировку уровня 3
+		get_node("/root/GameStateManager").unlock_level(3)
+		_open_win_panel()
+	elif level_number == 3 and score >= score_to_unlock:
+		get_node("/root/GameStateManager").unlock_level(4)
+		_open_win_panel()
+	elif level_number == 4 and score >= score_to_unlock:
+		# Для уровня 4 пока что просто показываем панель победы
+		_open_win_panel()
+	elif level_number == 5 and score >= score_to_unlock:
+		# Для уровня 5 показываем специальную панель победы
 		_open_win_panel()
 
 func _setup_game_over_panel() -> void:
-	# Создаем кнопку "Следующий уровень" программно только для уровня 1
-	if level_number == 1:
+	# Создаем кнопку "Следующий уровень" программно для уровней 1, 2 и 3
+	if level_number == 1 or level_number == 2 or level_number == 3:
 		next_level_button = Button.new()
 		next_level_button.name = "NextLevelButton"
 		next_level_button.text = "Следующий уровень"
@@ -286,10 +321,7 @@ func _setup_game_over_panel() -> void:
 			# Копируем стили от MenuButton
 			next_level_button.add_theme_stylebox_override("hover", menu_button.get_theme_stylebox("hover"))
 			next_level_button.add_theme_stylebox_override("pressed", menu_button.get_theme_stylebox("pressed"))
-			next_level_button.add_theme_stylebox_override("normal", menu_button.get_theme_stylebox("normal"))
-			print("DEBUG: Стили кнопки скопированы от MenuButton")
-		else:
-			print("DEBUG: MenuButton не найден для копирования стилей")
+		next_level_button.add_theme_stylebox_override("normal", menu_button.get_theme_stylebox("normal"))
 		
 		# Добавляем кнопку в MainContainer в правильную позицию
 		var main_container := game_over_panel.get_node("MainContainer")
@@ -305,33 +337,22 @@ func _setup_game_over_panel() -> void:
 			# Добавляем кнопку перед MenuButton
 			main_container.add_child(next_level_button)
 			main_container.move_child(next_level_button, menu_button_index)
-			print("DEBUG: Кнопка 'Следующий уровень' добавлена перед MenuButton на позицию ", menu_button_index)
 		else:
 			# Fallback: добавляем в конец
 			main_container.add_child(next_level_button)
-			print("DEBUG: MenuButton не найден, кнопка добавлена в конец")
 		
 		# Подключаем сигнал
 		next_level_button.pressed.connect(_on_next_level_pressed)
 		
 		# Скрываем кнопку по умолчанию
 		next_level_button.visible = false
-		
-		# Отладочная информация о порядке элементов
-		print("DEBUG: GameOverPanel настроена с кнопкой следующего уровня для уровня 1")
-		print("DEBUG: Финальный порядок элементов в MainContainer:")
-		for i in range(main_container.get_child_count()):
-			var child = main_container.get_child(i)
-			print("DEBUG: ", i, ": ", child.name, " (", child.get_class(), ")")
 	else:
 		# Для уровня 2 и выше используем кнопку из сцены
 		next_level_button = game_over_panel.get_node_or_null("MainContainer/NextLevelButton")
 		if next_level_button:
 			next_level_button.pressed.connect(_on_next_level_pressed)
-			print("DEBUG: Используем кнопку 'Следующий уровень' из сцены для уровня ", level_number)
 
 func _open_win_panel() -> void:
-	print("DEBUG: Показываем панель победы")
 	_show_win_panel()
 
 func _show_win_panel() -> void:
@@ -343,18 +364,15 @@ func _show_win_panel() -> void:
 	if game_over_score_label:
 		game_over_score_label.text = "Очки: " + str(score)
 	
-	# Показываем кнопку следующего уровня только для уровней 1 и 2
+	# Показываем кнопку следующего уровня для уровней 1, 2 и 3
 	if next_level_button:
-		if level_number == 1 or level_number == 2:
+		if level_number == 1 or level_number == 2 or level_number == 3:
 			next_level_button.visible = true
-			print("DEBUG: Кнопка следующего уровня показана для уровня ", level_number)
 		else:
 			next_level_button.visible = false
-			print("DEBUG: Кнопка следующего уровня скрыта для уровня ", level_number)
 	
 	# Показываем панель
 	game_over_panel.visible = true
-	print("DEBUG: Панель победы показана")
 
 # ===== Пул пончиков =====
 func _init_donut_pool() -> void:
@@ -540,6 +558,22 @@ func _on_donut_missed(donut_obj: Object) -> void:
 		pass
 	else:
 		pass
+	on_donut_fell()
+
+func on_donut_fell() -> void:
+	# Вызываем эту функцию там, где раньше был немедленный Game Over.
+	emit_signal("donut_missed")
+
+func _reset_level_state() -> void:
+	_hide_game_over()
+
+func _on_donut_missed_signal() -> void:
+	_handle_game_over()
+
+func _handle_game_over() -> void:
+	# Останови спавн/инпут/таймеры по проектной логике
+	if game_over_panel:
+		game_over_panel.visible = true
 	_set_game_over()
 
 # ===== Сложность: скорость каретки и запас камеры =====
@@ -598,21 +632,26 @@ func _show_lose_panel() -> void:
 	# Скрываем кнопку следующего уровня
 	if next_level_button:
 		next_level_button.visible = false
-		print("DEBUG: Кнопка следующего уровня скрыта")
 	
 	# Показываем панель
 	game_over_panel.visible = true
-	print("DEBUG: Панель поражения показана")
 
 func _on_next_level_pressed() -> void:
-	print("DEBUG: Переход на следующий уровень")
 	if level_number == 1:
 		# Переходим на уровень 2 через интро
 		LevelData.start_level(2)
 	elif level_number == 2:
-		# Для уровня 2 пока что пустая ссылка - позже будет переход на уровень 3
-		print("DEBUG: Кнопка 'Следующий уровень' для уровня 2 пока не реализована")
-		# TODO: Добавить переход на уровень 3
+		# Переходим на уровень 3 через интро
+		LevelData.start_level(3)
+	elif level_number == 3:
+		# Переходим на уровень 4 через интро
+		LevelData.start_level(4)
+	elif level_number == 4:
+		# Переходим на уровень 5 через интро
+		LevelData.start_level(5)
+	elif level_number == 5:
+		# Для уровня 5 возвращаемся в главное меню
+		get_tree().change_scene_to_file("res://scenes/StartMenu.tscn")
 	else:
 		# Для остальных уровней возвращаемся в главное меню
 		get_tree().change_scene_to_file("res://scenes/StartMenu.tscn")
@@ -721,7 +760,8 @@ func _show_game_over() -> void:
 	game_over_panel.visible = true
 
 func _hide_game_over() -> void:
-	game_over_panel.visible = false
+	if game_over_panel:
+		game_over_panel.visible = false
 
 # ===== Яндекс SDK и реклама =====
 func _setup_yandex_sdk() -> void:
@@ -738,20 +778,15 @@ func _initialize_yandex_sdk_async() -> void:
 	# Асинхронная инициализация YandexSDK
 	# Проверяем, что игра еще не инициализируется
 	if not YandexSDK.is_game_initialization_started and not YandexSDK.is_game_initialized:
-		print("Game: Инициализируем YandexSDK игру...")
 		YandexSDK.init_game()
 		await YandexSDK.game_initialized
-		print("Game: YandexSDK игра инициализирована")
 	elif YandexSDK.is_game_initialized:
-		print("Game: YandexSDK игра уже инициализирована")
+		pass
 	else:
-		print("Game: YandexSDK игра уже инициализируется, ждем...")
 		await YandexSDK.game_initialized
-		print("Game: YandexSDK игра инициализирована")
 	
 	
 	# Вызываем Game Ready API
-	print("Game: Вызываем Game Ready API...")
 	YandexSDK.game_ready()
 	
 	# Game Ready API вызывается без дополнительных сигналов
@@ -765,38 +800,34 @@ func _on_interstitial_ad(result: String) -> void:
 	# Обработчик результата Interstitial рекламы
 	match result:
 		"opened":
-			print("Interstitial реклама открыта")
+			pass
 		"closed":
-			print("Interstitial реклама закрыта")
+			pass
 		"error":
-			print("Ошибка показа Interstitial рекламы")
+			pass
 
 func _on_rewarded_ad(result: String) -> void:
 	# Обработчик результата Rewarded рекламы
 	match result:
 		"opened":
-			print("Rewarded реклама открыта")
+			pass
 		"rewarded":
-			print("Награда получена!")
+			pass
 		"closed":
-			print("Rewarded реклама закрыта")
+			pass
 		"error":
-			print("Ошибка показа Rewarded рекламы")
+			pass
 
 
 func _on_data_loaded(data: Dictionary) -> void:
 	# Обработчик загрузки данных от YandexSDK
-	print("Game: Данные загружены: ", data)
 	if data.has("best_score"):
 		_best = int(data["best_score"])
-		print("Game: Лучший результат загружен: ", _best)
 
 func _on_stats_loaded(stats: Dictionary) -> void:
 	# Обработчик загрузки статистики от YandexSDK
-	print("Game: Статистика загружена: ", stats)
 	if stats.has("best_score"):
 		_best = int(stats["best_score"])
-		print("Game: Лучший результат из статистики: ", _best)
 
 
 
@@ -810,14 +841,12 @@ func _save_game_stats() -> void:
 			"best_score": _best
 		}
 		YandexSDK.save_stats(stats)
-		print("Game: Статистика сохранена: ", stats)
 		
 		# Инкрементируем счетчик игр
 		var increments = {
 			"games_played": 1
 		}
 		YandexSDK.increment_stats(increments)
-		print("Game: Статистика инкрементирована: ", increments)
 
 
 # ===== Таймер задержки рекламы =====
@@ -846,7 +875,7 @@ func _on_ad_delay_timeout() -> void:
 		_show_interstitial_ad()
 	else:
 		# Кулдаун еще не прошел, просто сбрасываем таймер
-		print("Реклама не показана: кулдаун еще не прошел. Осталось: ", AD_COOLDOWN - time_since_last_ad, " секунд")
+		pass
 
 func _stop_ad_delay_timer() -> void:
 	"""Останавливает таймер показа рекламы"""
@@ -888,7 +917,7 @@ func check_touch_chain() -> bool:
 		return false
 	donuts = donuts.filter(func(x): return is_instance_valid(x))
 	var n: int = donuts.size()
-	if n < 5:
+	if n < 4:  # УВЕЛИЧЕННАЯ ПОДКРУТКА: уменьшено с 5 до 4 пончиков для цепочки
 		return false
 	
 	# Группируем пончики по цветам
@@ -905,7 +934,7 @@ func check_touch_chain() -> bool:
 	# Проверяем каждый цвет отдельно
 	for color in donuts_by_color.keys():
 		var color_indices: Array = donuts_by_color[color]
-		if color_indices.size() < 5:
+		if color_indices.size() < 4:  # УВЕЛИЧЕННАЯ ПОДКРУТКА: уменьшено с 5 до 4 пончиков для цепочки
 			continue
 		
 		# Строим граф только для пончиков этого цвета
@@ -928,7 +957,7 @@ func check_touch_chain() -> bool:
 				if not is_instance_valid(di) or not is_instance_valid(dj):
 					continue
 				var dist: float = (di.global_position - dj.global_position).length()
-				var touch: bool = dist <= (di.get_radius() + dj.get_radius()) * 1.02
+				var touch: bool = dist <= (di.get_radius() + dj.get_radius()) * 1.15  # УВЕЛИЧЕННАЯ ПОДКРУТКА: увеличено с 1.02 до 1.15
 				if touch:
 					adj[i].append(j)
 					adj[j].append(i)
@@ -950,7 +979,7 @@ func check_touch_chain() -> bool:
 					if not visited.has(w):
 						visited[w] = true
 						q.append(w)
-			if comp.size() >= 5:
+			if comp.size() >= 4:  # УВЕЛИЧЕННАЯ ПОДКРУТКА: уменьшено с 5 до 4 пончиков для цепочки
 				await _apply_chain_bonus_and_remove(comp)
 				return true
 	
@@ -1037,3 +1066,16 @@ func _unfreeze_donuts_after_removal() -> void:
 			# Сбрасываем таймер успокоения, чтобы пончик снова начал "успокаиваться"
 			if d.has_method("_settle_reset"):
 				d._settle_reset()
+
+# ===== Тестирование SpawnDirector =====
+func _test_spawn_director() -> void:
+	"""Тестовая функция для проверки работы SpawnDirector"""
+	print("=== Тест SpawnDirector ===")
+	print("Уровень: ", level_number)
+	
+	# Генерируем 20 пончиков и выводим результаты
+	for i in range(20):
+		var donut_type := SpawnDirector.get_next_donut_type(level_number)
+		print("Спавн ", i + 1, ": ", donut_type)
+	
+	print("=== Конец теста ===")

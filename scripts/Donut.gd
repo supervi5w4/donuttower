@@ -19,10 +19,10 @@ const DONUT_TEXTURES = {
 
 @export var bottom_y_limit: float = 10000.0
 
-# Порог "успокоения"
-@export var settle_linear_speed_threshold: float = 8.0     # пикс/с
-@export var settle_angular_speed_threshold: float = 0.6    # рад/с
-@export var settle_time_required: float = 0.80             # сек (сколько держаться ниже порогов)
+# Порог "успокоения" - УВЕЛИЧЕННАЯ ПОДКРУТКА
+@export var settle_linear_speed_threshold: float = 12.0    # пикс/с (увеличено с 8.0)
+@export var settle_angular_speed_threshold: float = 1.0    # рад/с (увеличено с 0.6)
+@export var settle_time_required: float = 0.60             # сек (уменьшено с 0.80 для быстрого успокоения)
 
 var _settle_timer: float = 0.0
 var _settled_emitted: bool = false

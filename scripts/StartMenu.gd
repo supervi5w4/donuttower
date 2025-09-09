@@ -19,19 +19,15 @@ func _ready() -> void:
 	if YandexSDK:
 		YandexSDK.init_player()
 		await YandexSDK.player_initialized
-		print("StartMenu: Игрок инициализирован для лидерборда")
 	
 	# Проверяем наличие MusicManager
 	if has_node("/root/Music"):
 		music_manager = get_node("/root/Music")
-		print("StartMenu: MusicManager найден")
 	else:
 		music_manager = null
-		print("StartMenu: MusicManager не найден! Проверьте настройки автозагрузки.")
 	
 	# Запускаем фоновую музыку
 	if music_manager:
-		print("StartMenu: Запуск музыки через MusicManager")
 		music_manager.play_bgm("res://assets/music/music.mp3", -20.0, true)
 	else:
 		# Альтернативный способ - создаем локальный плеер
@@ -88,12 +84,9 @@ func _update_all_texts():
 
 func _setup_music_controls():
 	"""Настройка элементов управления музыкой"""
-	print("StartMenu: Настройка элементов управления музыкой")
 	# Подключаем сигналы
 	if mute_button:
-		print("StartMenu: mute_button найден")
-	else:
-		print("StartMenu: mute_button не найден!")
+		mute_button.pressed.connect(_on_mute_button_pressed)
 	if volume_slider:
 		volume_slider.value_changed.connect(_on_volume_slider_changed)
 	
@@ -110,18 +103,14 @@ func _setup_music_controls():
 
 func _on_mute_button_pressed():
 	"""Обработчик нажатия кнопки мьюта"""
-	print("StartMenu: Кнопка звука нажата!")
 	if music_manager:
-		print("StartMenu: Используем MusicManager")
 		music_manager.toggle_mute()
 		_update_mute_button()
 	else:
 		# Fallback режим - переключаем локальное состояние
-		print("StartMenu: Используем fallback режим")
 		is_sound_muted = !is_sound_muted
 		_update_fallback_sound()
 		_update_mute_button()
-		print("StartMenu: Переключение звука в fallback режиме: ", "ВЫКЛ" if is_sound_muted else "ВКЛ")
 
 func _on_volume_slider_changed(value: float):
 	"""Обработчик изменения слайдера громкости"""
@@ -129,7 +118,7 @@ func _on_volume_slider_changed(value: float):
 		var volume_db = _linear_to_db(value)
 		music_manager.set_volume_db(volume_db)
 	else:
-		print("StartMenu: MusicManager недоступен для изменения громкости")
+		pass
 
 func _update_mute_button():
 	"""Обновляет текст кнопки мьюта"""
@@ -138,20 +127,16 @@ func _update_mute_button():
 			# Используем состояние из MusicManager
 			if music_manager.is_muted:
 				mute_button.text = tr("ui.sound.off")
-				print("StartMenu: Обновляем кнопку на ВЫКЛ (MusicManager)")
 			else:
 				mute_button.text = tr("ui.sound.on")
-				print("StartMenu: Обновляем кнопку на ВКЛ (MusicManager)")
 		else:
 			# Используем локальное состояние для fallback режима
 			if is_sound_muted:
 				mute_button.text = tr("ui.sound.off")
-				print("StartMenu: Обновляем кнопку на ВЫКЛ (fallback)")
 			else:
 				mute_button.text = tr("ui.sound.on")
-				print("StartMenu: Обновляем кнопку на ВКЛ (fallback)")
 	else:
-		print("StartMenu: mute_button не найден!")
+		pass
 
 func _linear_to_db(linear: float) -> float:
 	"""Конвертирует линейное значение (0-1) в dB"""
@@ -177,9 +162,8 @@ func _create_fallback_music():
 			stream.loop = true
 		add_child(fallback_player)
 		fallback_player.play()
-		print("StartMenu: Запущен резервный плеер музыки")
 	else:
-		print("StartMenu: Не удалось загрузить файл музыки")
+		pass
 
 func _update_fallback_sound():
 	"""Управляет состоянием fallback плеера"""

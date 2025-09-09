@@ -21,10 +21,8 @@ func _input(event: InputEvent) -> void:
 				pass
 
 func _on_test_interstitial_ad(result: String) -> void:
-	print("AdTester: Interstitial ad result: ", result)
 
 func _on_test_rewarded_ad(result: String) -> void:
-	print("AdTester: Rewarded ad result: ", result)
 
 func _exit_tree() -> void:
 	# Отключаем сигналы при удалении узла

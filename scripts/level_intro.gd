@@ -76,6 +76,27 @@ func _display_gameplay_description(level_info: LevelData.LevelInfo) -> void:
 			lines.append("🧱 Внимание: [b]стенки ниже[/b] — промахнуться проще!")
 			lines.append("")
 			lines.append("👆 Жми вовремя и не дай пончику укатиться за горизонт!")
+		3:
+			# Жёстко задаём уникальное описание для третьего уровня, как в инструкции
+			lines.append("[center]🌬️ Добро пожаловать в шторм! Сегодня ветер не просто мешает —[/center]")
+			lines.append("[center]он играет против тебя. Направление меняется внезапно,[/center]")
+			lines.append("[center]и только мастер чувствует момент броска.[/center]")
+			lines.append("")
+			lines.append("[center]🎯 Задача: набери 50 очков, несмотря на ветер и спешку.[/center]")
+			lines.append("[center]👆 Следи за стрелками — ветер может дуть в любую сторону![/center]")
+			return  # Выходим, чтобы не выполнять код для остальных уровней
+		4:
+			# Специальное описание для четвертого уровня
+			lines.append("[center]🏙️ Добро пожаловать на высоту![/center]")
+			lines.append("[center]Башня растёт, а вместе с ней — и твои амбиции.[/center]")
+			lines.append("[center]Теперь пончики летят дальше, дольше… и опаснее![/center]")
+			lines.append("")
+			lines.append("[center]🌬️ Ветер стал капризным — может ударить прямо во время броска.[/center]")
+			lines.append("[center]🎯 Задача: всё та же — набери 50 очков и держи равновесие![/center]")
+			lines.append("")
+			lines.append("[center]👁 Следи за движением — башня слегка шатается,[/center]")
+			lines.append("[center]🌪️ а порывы ветра могут сбить с толку даже мастера![/center]")
+			return  # Выходим, чтобы не выполнять код для остальных уровней
 		_:
 			# Для остальных уровней используем стандартное описание
 			lines.append("[center]%s[/center]" % level_info.description)
@@ -84,7 +105,6 @@ func _display_gameplay_description(level_info: LevelData.LevelInfo) -> void:
 			lines.append("🏃 %s" % level_info.cart_speed)
 			lines.append("")
 			lines.append("👆 %s" % level_info.hint)
-	
 	level_description_label.text = "\n".join(lines)
 	
 	# Применяем цветовую схему к RichTextLabel
@@ -155,7 +175,6 @@ func _on_skip_button_pressed() -> void:
 func _transition_to_game() -> void:
 	"""Переход к игровой сцене"""
 	var level_info = LevelData.get_current_level_info()
-	print("LevelIntro: Переход к игровой сцене - Уровень %d: %s" % [level_info.level_number, level_info.level_name])
 	
 	# Устанавливаем уровень в GameState для использования в игре
 	GameStateManager.reset_for_level(level_info.level_number)
@@ -165,6 +184,12 @@ func _transition_to_game() -> void:
 		get_tree().change_scene_to_file("res://scenes/Game.tscn")
 	elif level_info.level_number == 2:
 		get_tree().change_scene_to_file("res://scenes/Game_level_2.tscn")
+	elif level_info.level_number == 3:
+		get_tree().change_scene_to_file("res://scenes/Game_level_3.tscn")
+	elif level_info.level_number == 4:
+		get_tree().change_scene_to_file("res://scenes/Game_level_4.tscn")
+	elif level_info.level_number == 5:
+		get_tree().change_scene_to_file("res://scenes/Game_level_5.tscn")
 	else:
 		# Для остальных уровней используем основную сцену
 		get_tree().change_scene_to_file("res://scenes/Game.tscn")
