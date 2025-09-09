@@ -11,9 +11,7 @@ const ENABLE_ADS_RETRY := false
 @onready var ads_btn: Button = get_node_or_null("%ExtraLifeButton")
 
 func _ready() -> void:
-	print("DEBUG: GameOverPanel._ready() - добавляем в группу GameOverPanel")
 	add_to_group("GameOverPanel")
-	print("DEBUG: GameOverPanel._ready() - добавлена в группу, проверяем: ", is_in_group("GameOverPanel"))
 
 	# Создаем кнопку "Следующий уровень" программно, если её нет в сцене
 	if next_level_btn == null:
@@ -41,7 +39,6 @@ func _ready() -> void:
 		ads_btn.pressed.connect(_on_ads_pressed)
 
 func show_game_over(score: int, is_win: bool, next_scene_path: String = "") -> void:
-	print("DEBUG: GameOverPanel.show_game_over() вызван с параметрами: score=", score, ", is_win=", is_win, ", next_scene_path=", next_scene_path)
 	_is_win = is_win
 	_next_scene_path = next_scene_path
 
@@ -53,16 +50,12 @@ func show_game_over(score: int, is_win: bool, next_scene_path: String = "") -> v
 	# 2. Есть путь к следующей сцене
 	# 3. Уровень 2 разблокирован
 	var can_go_next := is_win and _next_scene_path != "" and GameStateManager.is_unlocked(2)
-	print("DEBUG: GameOverPanel.show_game_over() - can_go_next=", can_go_next, " (is_win=", is_win, ", next_scene_path='", next_scene_path, "', level2_unlocked=", GameStateManager.is_unlocked(2), ")")
 	if next_level_btn:
 		next_level_btn.visible = can_go_next
-		print("DEBUG: GameOverPanel.show_game_over() - next_level_btn.visible установлен в ", can_go_next)
 	else:
-		print("DEBUG: GameOverPanel.show_game_over() - next_level_btn не найден!")
 	
 	# Показываем панель
 	visible = true
-	print("DEBUG: GameOverPanel.show_game_over() - панель показана")
 
 func _on_next_level_pressed() -> void:
 	if _next_scene_path != "":
@@ -72,4 +65,3 @@ func _on_ads_pressed() -> void:
 	if Engine.has_singleton("YandexSDK"):
 		YandexSDK.show_rewarded_ad()
 	else:
-		print("YandexSDK недоступен в рантайме")
