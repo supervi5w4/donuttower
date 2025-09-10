@@ -285,7 +285,6 @@ func load_leaderboard_entries(leaderboard_name: String, include_user: bool, quan
 
 
 func _rewarded_ad(args) -> void:
-	print("rewarded ad res: ", args[0])
 	match args[0]:
 		"opened":
 			is_rewarded_ad_on_screen = true
@@ -298,7 +297,6 @@ func _rewarded_ad(args) -> void:
 
 
 func _interstitial_ad(args) -> void:
-	print("ad res: ", args[0])
 	match args[0]:
 		"opened":
 			is_ad_on_screen = true
@@ -345,7 +343,6 @@ func _leaderboard_entries_loaded(args) -> void:
 		else:
 			leaderboard_error.emit()
 	elif args[0] == 'error':
-		print("Произошла ошибка при загрузке лидерборда.")
 		leaderboard_error.emit()
 
 
