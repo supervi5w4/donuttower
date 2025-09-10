@@ -53,3 +53,27 @@ msgstr "OFF"
 
 msgid "ui.leaderboard.auth_required"
 msgstr "Authorization required to view leaderboard"
+
+msgid "ui.level.intro.skip"
+msgstr "🚀 Let's Go!"
+
+msgid "ui.level.intro.auto_transition"
+msgstr "⏳ Auto transition in %d sec..."
+
+msgid "ui.level.intro.launching"
+msgstr "🚀 Let's Go!"
+
+msgid "ui.level.info.donut_speed"
+msgstr "Donut speed:"
+
+msgid "ui.level.info.task"
+msgstr ""
+
+msgid "ui.level.info.reward"
+msgstr ""
+
+msgid "ui.level.info.tip"
+msgstr ""
+
+msgid "ui.level.info.target_score"
+msgstr "🧁 If you succeed — you'll earn %d points!"
