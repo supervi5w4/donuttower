@@ -22,6 +22,7 @@ LanguageManager="*res://scripts/LanguageManager.gd"
 Music="*res://singletons/MusicManager.gd"
 YandexSDK="*res://addons/godot-yandex-games-sdk-main/yandex_sdk.gd"
 LevelData="*res://autoloads/LevelData.gd"
+SpawnDirector="*res://scripts/systems/SpawnDirector.gd"
 
 [display]
 
