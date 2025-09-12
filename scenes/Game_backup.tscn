@@ -129,7 +129,7 @@ layout_mode = 2
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.8)
 theme_override_font_sizes/font_size = 32
-text = "Игра окончена!"
+text = "Game Over!"
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -138,7 +138,7 @@ layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.8, 0.2, 1)
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.8)
 theme_override_font_sizes/font_size = 24
-text = "Счёт: 0"
+text = "Score: 0"
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -152,7 +152,7 @@ theme_override_font_sizes/font_size = 24
 theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button")
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-text = "Меню"
+text = "Menu"
 
 [node name="Camera2D" type="Camera2D" parent="."]
 position = Vector2(360, 640)

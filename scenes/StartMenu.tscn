@@ -1,7 +1,7 @@
 [gd_scene load_steps=6 format=3 uid="uid://cexmjcvxnrm1"]
 
 [ext_resource type="Script" uid="uid://bjpeell44xmd2" path="res://scripts/StartMenu.gd" id="1_start_menu"]
-[ext_resource type="Texture2D" uid="uid://cxonxat8jv4ng" path="res://assets/bg/bg_gradient_720x1280.png" id="2_bg"]
+[ext_resource type="Texture2D" uid="uid://d3ou46scb5pir" path="res://assets/bg/bg_gradient_720x1280.png" id="2_bg"]
 [ext_resource type="Script" uid="uid://jluk044172b1" path="res://addons/i18n/i18n_node.gd" id="4_i18n"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_hover"]
@@ -124,7 +124,7 @@ theme_override_font_sizes/font_size = 24
 theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button")
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-text = "Начать играть"
+text = "Start Playing"
 script = ExtResource("4_i18n")
 translation_key = "ui.start.button"
 
@@ -134,7 +134,7 @@ layout_mode = 2
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.8)
 theme_override_font_sizes/font_size = 27
-text = "Скидывай пончики один за другим — строй башню и лови ритм!
+text = "Drop donuts one by one — build a tower and catch the rhythm!
 4 одинаковых подряд? Лови сладкий бонус и взлетай в счёте!"
 horizontal_alignment = 1
 vertical_alignment = 1

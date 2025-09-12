@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=3 uid="uid://b0qpy03ykb8c0"]
 
 [ext_resource type="Script" uid="uid://b0l6qsw1fdrej" path="res://scripts/PreviewDonut.gd" id="1_dk8q7"]
-[ext_resource type="Texture2D" uid="uid://cab8iuemrj5an" path="res://assets/donuts/donut_pink.png" id="2_0gcxi"]
+[ext_resource type="Texture2D" uid="uid://cssjypfcthd1n" path="res://assets/donuts/donut_pink.png" id="2_0gcxi"]
 
 [node name="PreviewDonut" type="Node2D"]
 script = ExtResource("1_dk8q7")
