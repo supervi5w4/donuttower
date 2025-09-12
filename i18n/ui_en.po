@@ -51,6 +51,9 @@ msgstr "ON"
 msgid "ui.sound.off"
 msgstr "OFF"
 
+msgid "ui.extra_life.button"
+msgstr "Extra Life"
+
 msgid "ui.leaderboard.auth_required"
 msgstr "Authorization required to view leaderboard"
 
@@ -77,3 +80,21 @@ msgstr ""
 
 msgid "ui.level.info.target_score"
 msgstr "🧁 If you succeed — you'll earn %d points!"
+
+msgid "ui.next_level.button"
+msgstr "Next Level"
+
+msgid "ui.level.intro.welcome"
+msgstr "Welcome to the world of donuts! Here you'll learn the basics of tower building."
+
+msgid "ui.level.title"
+msgstr "Level"
+
+msgid "ui.level.completed"
+msgstr "Level Completed!"
+
+msgid "ui.gameover.title"
+msgstr "Game Over"
+
+msgid "ui.gameover.title_win"
+msgstr "Game Over!"

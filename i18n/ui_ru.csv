@@ -12,8 +12,13 @@ ui.leaderboard.loading,Загрузка...
 ui.leaderboard.error,Ошибка загрузки
 ui.menu.button,Меню
 ui.start.button,Начать играть
-ui.start.description,Собирай пончики, один за другим — строй хрупкую башню сладостей.
-Собери ряд из пяти одинаковых — и получи вкусный бонус!
-Но помни: один промах — и всё развалится.
+ui.start.description,"Скидывай пончики один за другим — строй башню и лови ритм!
+4 одинаковых подряд? Лови сладкий бонус и взлетай в счёте!"
 ui.sound.on,ВКЛ
 ui.sound.off,ВЫКЛ
+ui.next_level.button,Следующий уровень
+ui.level.intro.welcome,Добро пожаловать в мир пончиков! Здесь ты научишься основам строительства башен.
+ui.level.title,Уровень
+ui.level.completed,Уровень пройден!
+ui.gameover.title,Игра окончена
+ui.gameover.title_win,Игра окончена!

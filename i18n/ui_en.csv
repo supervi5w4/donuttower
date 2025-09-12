@@ -17,3 +17,9 @@ Collect a row of five identical ones — and get a tasty bonus!
 But remember: one miss — and everything falls apart.
 ui.sound.on,ON
 ui.sound.off,OFF
+ui.next_level.button,Next Level
+ui.level.intro.welcome,Welcome to the world of donuts! Here you'll learn the basics of tower building.
+ui.level.title,Level
+ui.level.completed,Level Completed!
+ui.gameover.title,Game Over
+ui.gameover.title_win,Game Over!
