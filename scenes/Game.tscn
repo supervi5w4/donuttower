@@ -52,27 +52,27 @@ script = ExtResource("1_qbsmt")
 [node name="LeftWall" type="StaticBody2D" parent="."]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="LeftWall"]
-position = Vector2(635.5, 1048.94)
+position = Vector2(633.761, 1023.64)
 rotation = 3.14159
-scale = Vector2(3.29519, -5.8066)
+scale = Vector2(3.25043, -6.47328)
 shape = SubResource("RectangleShape2D_kiw3p")
 
 [node name="Sprite2D" type="Sprite2D" parent="LeftWall"]
-position = Vector2(636, 1033)
-scale = Vector2(0.25, 0.25)
+position = Vector2(634.261, 1007.7)
+scale = Vector2(0.246604, 0.278704)
 texture = ExtResource("2_kiw3p")
 
 [node name="RightWall" type="StaticBody2D" parent="."]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="RightWall"]
-position = Vector2(92.4356, 1058.08)
+position = Vector2(79.5098, 1060.11)
 rotation = 3.14159
-scale = Vector2(6.66425, 5.90026)
+scale = Vector2(6.30366, 5.71721)
 shape = SubResource("RectangleShape2D_400sg")
 
 [node name="Sprite2D" type="Sprite2D" parent="RightWall"]
-position = Vector2(93, 1040)
-scale = Vector2(0.25, 0.25)
+position = Vector2(80.0742, 1042.03)
+scale = Vector2(0.236473, 0.242244)
 texture = ExtResource("3_400sg")
 
 [node name="Ground" type="StaticBody2D" parent="."]
@@ -124,6 +124,7 @@ custom_minimum_size = Vector2(48, 48)
 layout_mode = 2
 
 [node name="ScoreLabel" type="Label" parent="UI/UIRoot"]
+visible = false
 layout_mode = 1
 anchors_preset = 5
 anchor_left = 0.5

@@ -134,9 +134,8 @@ layout_mode = 2
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.8)
 theme_override_font_sizes/font_size = 27
-text = "Собирай пончики, один за другим — строй хрупкую башню сладостей.
-Собери ряд из пяти одинаковых — и получи вкусный бонус!
-Но помни: один промах — и всё развалится."
+text = "Скидывай пончики один за другим — строй башню и лови ритм!
+4 одинаковых подряд? Лови сладкий бонус и взлетай в счёте!"
 horizontal_alignment = 1
 vertical_alignment = 1
 autowrap_mode = 2
