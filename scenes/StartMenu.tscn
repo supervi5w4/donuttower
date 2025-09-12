@@ -72,6 +72,7 @@ theme_override_styles/normal = SubResource("StyleBoxFlat_button")
 text = "RU"
 
 [node name="MusicControls" type="VBoxContainer" parent="."]
+visible = false
 layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
