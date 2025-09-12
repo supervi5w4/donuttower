@@ -181,6 +181,10 @@ func set_volume_db(volume_db: float) -> void:
 func toggle_mute() -> void:
 	is_muted = !is_muted
 	
+	# Мьютируем/размьютируем шину
+	var bus_index = AudioServer.get_bus_index(_get_music_bus_name())
+	AudioServer.set_bus_mute(bus_index, is_muted)
+	
 	if is_muted:
 		active_player.volume_db = MIN_VOLUME_DB
 		if is_crossfading:
@@ -273,4 +277,7 @@ func _load_settings() -> void:
 			var settings = json.data
 			target_volume_db = settings.get("volume_db", DEFAULT_VOLUME_DB)
 			is_muted = settings.get("is_muted", false)
+			# Синхронизируем состояние шины с загруженным состоянием мьюта
+			var bus_index = AudioServer.get_bus_index(_get_music_bus_name())
+			AudioServer.set_bus_mute(bus_index, is_muted)
 			# Не восстанавливаем current_track, чтобы музыка не начиналась автоматически
