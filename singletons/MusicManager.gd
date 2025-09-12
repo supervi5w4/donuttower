@@ -31,22 +31,17 @@ var fade_player: AudioStreamPlayer
 var fade_in_timer: Timer
 var fade_out_timer: Timer
 
-func _ready():
-	# Настройка аудио шины
-	var music_bus = AudioServer.get_bus_index("Music")
-	if music_bus == -1:
-		# Создаем шину Music если её нет
-		AudioServer.add_bus(1)
-		AudioServer.set_bus_name(1, "Music")
-		music_bus = 1
+func _ready() -> void:
+	# Настройка аудио шины с fallback на Master
+	_setup_audio_bus()
 	
 	# Инициализация плееров
 	player1 = AudioStreamPlayer.new()
 	player2 = AudioStreamPlayer.new()
 	
 	# Настройка плееров
-	player1.bus = "Music"
-	player2.bus = "Music"
+	player1.bus = _get_music_bus_name()
+	player2.bus = _get_music_bus_name()
 	player1.volume_db = MIN_VOLUME_DB
 	player2.volume_db = MIN_VOLUME_DB
 	
@@ -75,21 +70,22 @@ func _ready():
 	
 	# Устанавливаем начальную громкость
 	set_volume_db(target_volume_db)
+	
+	# Автоматически запускаем стартовую музыку
+	_auto_start_music()
 
 # Воспроизведение музыки с кросс-фейдом
-func play_bgm(track_path: String, volume_db: float = DEFAULT_VOLUME_DB, loop: bool = true):
-	print("MusicManager.play_bgm вызван с треком: ", track_path)
+func play_bgm(track_path: String, volume_db: float = DEFAULT_VOLUME_DB, loop: bool = true) -> void:
 	
+	# Предотвращаем дублирование - если тот же трек уже играет, не перезапускаем
 	if current_track == track_path and active_player.playing:
-		print("Трек уже играет, пропускаем")
-		return # Уже играет эта композиция
+		return
 	
 	var stream = load(track_path) as AudioStream
 	if not stream:
 		push_error("Не удалось загрузить трек: " + track_path)
 		return
 	
-	print("Трек загружен успешно, начинаем воспроизведение")
 	
 	current_track = track_path
 	target_volume_db = volume_db
@@ -100,15 +96,14 @@ func play_bgm(track_path: String, volume_db: float = DEFAULT_VOLUME_DB, loop: bo
 	else:
 		# Простое воспроизведение
 		active_player.stream = stream
-		if stream is AudioStreamOggVorbis or stream is AudioStreamMP3:
-			stream.loop = loop
+		_set_stream_loop(stream, loop)
 		active_player.play()
 		_fade_in(active_player)
 	
 	music_started.emit(track_path)
 
 # Остановка музыки с кросс-фейдом
-func stop_bgm():
+func stop_bgm() -> void:
 	if not active_player.playing:
 		return
 	
@@ -117,13 +112,12 @@ func stop_bgm():
 	music_stopped.emit()
 
 # Кросс-фейд к новому треку
-func _crossfade_to_new_track(stream: AudioStream, loop: bool):
+func _crossfade_to_new_track(stream: AudioStream, loop: bool) -> void:
 	is_crossfading = true
 	
 	# Настраиваем новый плеер
 	fade_player.stream = stream
-	if stream is AudioStreamOggVorbis or stream is AudioStreamMP3:
-		stream.loop = loop
+	_set_stream_loop(stream, loop)
 	fade_player.volume_db = MIN_VOLUME_DB
 	fade_player.play()
 	
@@ -137,8 +131,7 @@ func _crossfade_to_new_track(stream: AudioStream, loop: bool):
 	fade_player = temp
 
 # Плавное появление
-func _fade_in(player: AudioStreamPlayer):
-	print("Начинаем fade_in для плеера")
+func _fade_in(player: AudioStreamPlayer) -> void:
 	player.volume_db = MIN_VOLUME_DB
 	fade_in_timer.start()
 	
@@ -151,7 +144,7 @@ func _fade_in(player: AudioStreamPlayer):
 	)
 
 # Плавное затухание
-func _fade_out(player: AudioStreamPlayer):
+func _fade_out(player: AudioStreamPlayer) -> void:
 	fade_out_timer.start()
 	
 	var tween = create_tween()
@@ -163,16 +156,16 @@ func _fade_out(player: AudioStreamPlayer):
 	)
 
 # Завершение появления
-func _on_fade_in_complete():
+func _on_fade_in_complete() -> void:
 	if is_crossfading:
 		is_crossfading = false
 
 # Завершение затухания
-func _on_fade_out_complete():
+func _on_fade_out_complete() -> void:
 	fade_player.stop()
 
 # Установка громкости
-func set_volume_db(volume_db: float):
+func set_volume_db(volume_db: float) -> void:
 	volume_db = clamp(volume_db, MIN_VOLUME_DB, MAX_VOLUME_DB)
 	target_volume_db = volume_db
 	
@@ -185,7 +178,7 @@ func set_volume_db(volume_db: float):
 	_save_settings()
 
 # Переключение мьюта
-func toggle_mute():
+func toggle_mute() -> void:
 	is_muted = !is_muted
 	
 	if is_muted:
@@ -204,6 +197,10 @@ func toggle_mute():
 func get_volume_db() -> float:
 	return target_volume_db
 
+# Получение состояния мьюта
+func get_is_muted() -> bool:
+	return is_muted
+
 # Проверка, играет ли музыка
 func is_playing() -> bool:
 	return active_player.playing
@@ -213,7 +210,7 @@ func get_current_track() -> String:
 	return current_track
 
 # Сохранение настроек
-func _save_settings():
+func _save_settings() -> void:
 	var settings = {
 		"volume_db": target_volume_db,
 		"is_muted": is_muted,
@@ -225,8 +222,45 @@ func _save_settings():
 		file.store_string(JSON.stringify(settings))
 		file.close()
 
+# Настройка аудио шины с fallback
+func _setup_audio_bus() -> void:
+	var music_bus_index = AudioServer.get_bus_index("Music")
+	if music_bus_index == -1:
+		# Создаем шину Music если её нет
+		AudioServer.add_bus(1)
+		AudioServer.set_bus_name(1, "Music")
+	else:
+		pass
+
+# Получение имени аудио шины с fallback
+func _get_music_bus_name() -> String:
+	var music_bus_index = AudioServer.get_bus_index("Music")
+	if music_bus_index != -1:
+		return "Music"
+	else:
+		return "Master"
+
+# Автоматический запуск стартовой музыки
+func _auto_start_music() -> void:
+	# Ждем один кадр, чтобы все автозагружаемые синглтоны инициализировались
+	await get_tree().process_frame
+	
+	# Проверяем, не играет ли уже музыка
+	if not is_playing():
+		play_bgm("res://assets/music/music.mp3", DEFAULT_VOLUME_DB, true)
+
+# Настройка зацикливания для различных типов аудио потоков
+func _set_stream_loop(stream: AudioStream, loop: bool) -> void:
+	if stream is AudioStreamOggVorbis:
+		stream.loop = loop
+	elif stream is AudioStreamMP3:
+		stream.loop = loop
+	elif stream is AudioStreamWAV:
+		# Для WAV файлов зацикливание настраивается через AudioStreamWAV
+		stream.loop_mode = AudioStreamWAV.LOOP_FORWARD if loop else AudioStreamWAV.LOOP_DISABLED
+
 # Загрузка настроек
-func _load_settings():
+func _load_settings() -> void:
 	var file = FileAccess.open("user://music_settings.dat", FileAccess.READ)
 	if file:
 		var json_string = file.get_as_text()
