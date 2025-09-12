@@ -97,8 +97,6 @@ func _update_all_texts():
 func _setup_music_controls():
 	"""Настройка элементов управления музыкой"""
 	# Подключаем сигналы
-	if mute_button:
-		mute_button.pressed.connect(_on_mute_button_pressed)
 	if volume_slider:
 		volume_slider.value_changed.connect(_on_volume_slider_changed)
 	
