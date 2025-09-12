@@ -18,6 +18,9 @@ msgstr "SDK недоступен"
 msgid "ui.leaderboard.load_error"
 msgstr "Не удалось загрузить таблицу результатов"
 
+msgid "ui.level_complete.title"
+msgstr "Уровень пройден!"
+
 msgid "ui.leaderboard.empty"
 msgstr "Таблица результатов пуста"
 
@@ -43,7 +46,7 @@ msgid "ui.start.button"
 msgstr "Начать играть"
 
 msgid "ui.start.description"
-msgstr "Скидывай пончики один за другим — строй башню и лови ритм!\n4 одинаковых подряд? Лови сладкий бонус и взлетай в счёте!"
+msgstr "Скидывай пончики один за другим — строй башню и лови ритм!\n4 одинаковых подряд? Лови сладкий бонус и взлетай в счёте!\nНо помни: один промах — и всё развалится."
 
 msgid "ui.sound.on"
 msgstr "ВКЛ"

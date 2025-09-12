@@ -12,8 +12,8 @@ ui.leaderboard.loading,Loading...
 ui.leaderboard.error,Load Error
 ui.menu.button,Menu
 ui.start.button,Start Playing
-ui.start.description,Collect donuts one by one — build a fragile tower of sweets.
-Collect a row of five identical ones — and get a tasty bonus!
+ui.start.description,Drop donuts one by one — build a tower and catch the rhythm!
+4 identical in a row? Catch a sweet bonus and skyrocket your score!
 But remember: one miss — and everything falls apart.
 ui.sound.on,ON
 ui.sound.off,OFF

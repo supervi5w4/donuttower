@@ -18,6 +18,9 @@ msgstr "SDK unavailable"
 msgid "ui.leaderboard.load_error"
 msgstr "Failed to load leaderboard"
 
+msgid "ui.level_complete.title"
+msgstr "Level Complete!"
+
 msgid "ui.leaderboard.empty"
 msgstr "Leaderboard is empty"
 
@@ -43,7 +46,7 @@ msgid "ui.start.button"
 msgstr "Start Playing"
 
 msgid "ui.start.description"
-msgstr "Collect donuts one by one — build a fragile tower of sweets.\nCollect a row of five identical ones — and get a tasty bonus!\nBut remember: one miss — and everything falls apart."
+msgstr "Drop donuts one by one — build a tower and catch the rhythm!\n4 identical in a row? Catch a sweet bonus and skyrocket your score!\nBut remember: one miss — and everything falls apart."
 
 msgid "ui.sound.on"
 msgstr "ON"
