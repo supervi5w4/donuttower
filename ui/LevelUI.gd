@@ -4,9 +4,14 @@ class_name LevelUI
 var _level_label: Label
 var _bar: ProgressBar
 var _max: int = 50
+var _current_level: int = 1
 var _color_scheme: LevelData.LevelColorScheme
 
 func _ready() -> void:
+	# Подключаемся к сигналу смены языка
+	if LanguageManager:
+		LanguageManager.language_changed.connect(_on_language_changed)
+	
 	var layer := CanvasLayer.new()
 	add_child(layer)
 
@@ -25,7 +30,7 @@ func _ready() -> void:
 
 	# Уровень
 	_level_label = Label.new()
-	_level_label.text = "Уровень: 1"
+	_level_label.text = tr("ui.level.title") + ": 1"
 	_level_label.add_theme_font_size_override("font_size", 20)
 	# Цвета будут установлены через set_color_scheme()
 	_level_label.add_theme_color_override("font_shadow_color", Color.BLACK)
@@ -45,7 +50,17 @@ func _ready() -> void:
 	vb.add_child(_bar)
 
 func set_level_number(n: int) -> void:
-	_level_label.text = "Уровень: %d" % n
+	_current_level = n
+	_update_level_text()
+
+func _update_level_text() -> void:
+	"""Обновляет текст уровня с учетом текущего языка"""
+	if _level_label:
+		_level_label.text = tr("ui.level.title") + ": %d" % _current_level
+
+func _on_language_changed(_language_code: String) -> void:
+	"""Обработчик смены языка"""
+	_update_level_text()
 
 func set_progress(score: int, max_score: int) -> void:
 	_max = max_score
