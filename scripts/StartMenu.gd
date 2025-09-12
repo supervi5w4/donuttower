@@ -15,6 +15,10 @@ func _ready() -> void:
 		language_manager.language_changed.connect(_on_language_changed)
 		_update_language_button()
 	
+	# Принудительно обновляем все тексты при загрузке
+	await get_tree().process_frame
+	_update_all_texts()
+	
 	# Инициализируем игрока для работы с лидербордом
 	if YandexSDK:
 		YandexSDK.init_player()
@@ -27,14 +31,11 @@ func _ready() -> void:
 	music_manager = Music
 	
 	# Отладочная информация
-	print("MusicManager доступен: ", music_manager != null)
 	
 	# Запускаем фоновую музыку
 	if music_manager:
-		print("Запускаем музыку через MusicManager")
 		music_manager.play_bgm("res://assets/music/music.mp3")
 	else:
-		print("MusicManager недоступен, создаем fallback плеер")
 		# Альтернативный способ - создаем локальный плеер
 		_create_fallback_music()
 	
@@ -136,7 +137,8 @@ func _update_mute_button():
 	if mute_button:
 		if music_manager:
 			# Используем состояние из MusicManager
-			if music_manager.is_muted:
+			var is_muted = music_manager.get_is_muted()
+			if is_muted:
 				mute_button.text = tr("ui.sound.off")
 			else:
 				mute_button.text = tr("ui.sound.on")
@@ -163,7 +165,6 @@ func _db_to_linear(db: float) -> float:
 
 func _create_fallback_music():
 	"""Создает резервный плеер музыки если MusicManager недоступен"""
-	print("Создаем fallback плеер музыки")
 	fallback_player = AudioStreamPlayer.new()
 	
 	# Убеждаемся, что шина Music существует
@@ -177,7 +178,6 @@ func _create_fallback_music():
 	
 	var stream = load("res://assets/music/music.mp3") as AudioStream
 	if stream:
-		print("Музыкальный файл загружен успешно")
 		fallback_player.stream = stream
 		fallback_player.volume_db = -20.0
 		# Устанавливаем зацикливание для MP3/Ogg файлов
@@ -185,9 +185,8 @@ func _create_fallback_music():
 			stream.loop = true
 		add_child(fallback_player)
 		fallback_player.play()
-		print("Fallback плеер запущен")
 	else:
-		print("Ошибка: не удалось загрузить музыкальный файл")
+		pass
 
 func _update_fallback_sound():
 	"""Управляет состоянием fallback плеера"""
@@ -199,16 +198,4 @@ func _update_fallback_sound():
 
 func _test_music():
 	"""Тестирует работу музыки"""
-	print("=== ТЕСТ МУЗЫКИ ===")
-	print("MusicManager доступен: ", music_manager != null)
-	if music_manager:
-		print("MusicManager играет: ", music_manager.is_playing())
-		print("Текущий трек: ", music_manager.get_current_track())
-		print("Громкость: ", music_manager.get_volume_db())
-	
-	if fallback_player:
-		print("Fallback плеер существует: ", fallback_player != null)
-		print("Fallback плеер играет: ", fallback_player.playing)
-		print("Fallback громкость: ", fallback_player.volume_db)
-	
-	print("=== КОНЕЦ ТЕСТА ===")
+	pass

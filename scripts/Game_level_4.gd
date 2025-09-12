@@ -251,7 +251,7 @@ func _cleanup_fallen() -> void:
 func get_wind_info() -> Dictionary:
 	"""Возвращает информацию о текущем ветре"""
 	if not wind_manager:
-		return {"force": 0, "direction": "штиль", "strength": "отсутствует", "gust_active": false}
+		return {"force": 0, "direction": "calm", "strength": "none", "gust_active": false}
 	
 	var base_wind = wind_manager.get_wind_force()
 	var total_wind = base_wind + (gust_wind_force if gust_wind_active else 0)

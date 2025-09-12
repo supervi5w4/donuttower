@@ -242,7 +242,7 @@ func _get_atmosphere_from_intro(level_number: int) -> String:
 	"""Получить атмосферное описание из level_intro"""
 	match level_number:
 		1:
-			return "Добро пожаловать! Сегодня ты в порту, где пахнет морем и свежей выпечкой."
+			return "Welcome! Today you're in a port that smells of the sea and fresh pastries."
 		2:
 			return "🏝️ Ветер с моря крепчает, а пончики катятся быстрее!\nТы в уютном греческом кафе на берегу, где башни из сладостей строят прямо под шум прибоя."
 		3:
@@ -252,68 +252,68 @@ func _get_atmosphere_from_intro(level_number: int) -> String:
 		5:
 			return "🏜️ Финальный вызов первой главы!\nТы в Египте — пекло, песок и башня пончиков прямо у подножия пирамид."
 		_:
-			return "Добро пожаловать в новый уровень!"
+			return "Welcome to a new level!"
 
 func _get_level_name_from_intro(level_number: int) -> String:
 	"""Получить название уровня из level_intro"""
 	match level_number:
 		1:
-			return "Гавань пончиков"
+			return "Donut Harbor"
 		2:
-			return "Кафе \"У Яниса\""
+			return "Yanis' Cafe"
 		3:
-			return "Штормовое утро"
+			return "Stormy Morning"
 		4:
-			return "Кафе на крыше"
+			return "Rooftop Cafe"
 		5:
-			return "Тени пирамид"
+			return "Pyramid Shadows"
 		_:
-			return "Неизвестный уровень"
+			return "Unknown Level"
 
 func _get_cart_speed_from_intro(level_number: int) -> String:
 	"""Получить описание скорости пончиков из level_intro"""
 	match level_number:
 		1:
-			return "🏃 Пончики летят медленно — успевай строить!"
+			return "🏃 Donuts fly slowly — you have time to build!"
 		2:
-			return "🧱 Внимание: стенки ниже — промахнуться проще!"
+			return "🧱 Attention: walls are lower — easier to miss!"
 		3:
-			return "🏃 Пончики летят с той же скоростью, что и во втором уровне!"
+			return "🏃 Donuts fly at the same speed as in the second level!"
 		4:
-			return "🌪️ Порывистый ветер и шатающаяся башня — настоящий вызов!"
+			return "🌪️ Gusty wind and swaying tower — a real challenge!"
 		5:
-			return "🏜 Песок сверху падает песок который копится снизу экрана на ground"
+			return "🏜 Sand falls from above and accumulates at the bottom of the screen on the ground"
 		_:
-			return "🏃 Пончики летят с обычной скоростью"
+			return "🏃 Donuts fly at normal speed"
 
 func _get_objective_from_intro(level_number: int) -> String:
 	"""Получить цель уровня из level_intro"""
 	match level_number:
 		1:
-			return "🎯 Задача: построить башню из пончиков"
+			return "🎯 Task: build a tower of donuts"
 		2:
-			return "🎯 Задача: набери 50 очков и докажи, что ты мастер балансировки!"
+			return "🎯 Task: score 50 points and prove you're a master of balance!"
 		3:
-			return "🎯 Задача: набери 50 очков, несмотря на ветер и спешку."
+			return "🎯 Task: score 50 points despite wind and haste."
 		4:
-			return "🎯 Задача: всё та же — набери 50 очков и держи равновесие!"
+			return "🎯 Task: same as before — score 50 points and maintain balance!"
 		5:
-			return "🎯 Задача: набери 50 очков и докажи, что ты достоин вершины!"
+			return "🎯 Task: score 50 points and prove you're worthy of the summit!"
 		_:
-			return "🎯 Задача: набери 50 очков"
+			return "🎯 Task: score 50 points"
 
 func _get_hint_from_intro(level_number: int) -> String:
 	"""Получить подсказку из level_intro"""
 	match level_number:
 		1:
-			return "👆 Жми вовремя — пусть башня растёт!"
+			return "👆 Press in time — let the tower grow!"
 		2:
-			return "👆 Жми вовремя и не дай пончику укатиться за горизонт!"
+			return "👆 Press in time and don't let the donut roll over the horizon!"
 		3:
-			return "👆 Следи за стрелками — ветер может дуть в любую сторону!"
+			return "👆 Watch the arrows — wind can blow in any direction!"
 		4:
-			return "👁 Следи за движением — башня слегка шатается, а порывы ветра могут сбить с толку даже мастера!"
+			return "👁 Watch the movement — the tower sways slightly, and wind gusts can confuse even a master!"
 		5:
-			return "👁 Следи за каждым броском — теперь всё решает точность."
+			return "👁 Watch every throw — now everything depends on accuracy."
 		_:
-			return "👆 Жми вовремя!"
+			return "👆 Press in time!"

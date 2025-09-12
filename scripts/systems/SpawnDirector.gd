@@ -7,17 +7,19 @@ extends Node
 var DONUT_TYPES := ["blue", "chocolate", "pink", "rainbow"]
 
 var LEVEL_CONFIG := {
-	1: { "stickiness": 0.65, "streak_cap": 3, "cooldown_factor": 0.6, "cooldown_spawns": 3 },
-	2: { "stickiness": 0.58, "streak_cap": 3, "cooldown_factor": 0.65, "cooldown_spawns": 3 },
-	3: { "stickiness": 0.48, "streak_cap": 3, "cooldown_factor": 0.7,  "cooldown_spawns": 3 },
-	4: { "stickiness": 0.35, "streak_cap": 3, "cooldown_factor": 0.75, "cooldown_spawns": 2 },
-	5: { "stickiness": 0.25, "streak_cap": 3, "cooldown_factor": 0.8,  "cooldown_spawns": 2 }
+	1: { "stickiness": 0.85, "streak_cap": 5, "cooldown_factor": 0.4, "cooldown_spawns": 2, "group_size": 3 },
+	2: { "stickiness": 0.80, "streak_cap": 4, "cooldown_factor": 0.45, "cooldown_spawns": 2, "group_size": 3 },
+	3: { "stickiness": 0.75, "streak_cap": 4, "cooldown_factor": 0.5,  "cooldown_spawns": 2, "group_size": 2 },
+	4: { "stickiness": 0.70, "streak_cap": 3, "cooldown_factor": 0.55, "cooldown_spawns": 2, "group_size": 2 },
+	5: { "stickiness": 0.65, "streak_cap": 3, "cooldown_factor": 0.6,  "cooldown_spawns": 2, "group_size": 2 }
 }
 
 var _rng := RandomNumberGenerator.new()
 var _last_type := ""
 var _streak_len := 0
 var _cooldown_left := 0
+var _group_size := 0  # размер текущей группы одинаковых пончиков
+var _target_group_size := 0  # целевой размер группы
 
 var _telemetry := [] # массив словарей для телеметрии
 
@@ -25,17 +27,19 @@ func _ready() -> void:
 	_rng.randomize()
 
 ## Инициализация seed для детерминированного поведения
-func init_seed(seed: int = 0) -> void:
-	if seed == 0:
+func init_seed(seed_value: int = 0) -> void:
+	if seed_value == 0:
 		_rng.randomize()
 	else:
-		_rng.seed = seed
+		_rng.seed = seed_value
 
 ## Сброс состояния на старте уровня
 func reset(level: int) -> void:
 	_last_type = ""
 	_streak_len = 0
 	_cooldown_left = 0
+	_group_size = 0
+	_target_group_size = 0
 	_telemetry.clear()
 	_log("reset", level, "", 0.0, false)
 
@@ -50,6 +54,7 @@ func get_next_donut_type(level: int) -> String:
 	var cap: int = cfg["streak_cap"]
 	var cool_factor: float = cfg["cooldown_factor"]
 	var cool_spawns: int = cfg["cooldown_spawns"]
+	var group_size: int = cfg["group_size"]
 
 	var s_eff: float = s
 	var cooldown_active: bool = false
@@ -59,36 +64,34 @@ func get_next_donut_type(level: int) -> String:
 
 	var chosen := ""
 	
-	# Первый пончик - случайный выбор
+	# Первый пончик - случайный выбор и инициализация группы
 	if _last_type == "":
 		chosen = _choose_any()
 		_last_type = chosen
 		_streak_len = 1
+		_group_size = 1
+		_target_group_size = _rng.randi_range(2, group_size)  # случайный размер группы 2-3
 		_step_cooldown()
 		_log("first", level, chosen, s_eff, cooldown_active)
 		return chosen
 
-	# Принудительный сброс серии при достижении лимита
-	if _streak_len >= cap:
-		chosen = _choose_other(_last_type)
-		_last_type = chosen
-		_streak_len = 1
-		_cooldown_left = cool_spawns
-		_log("force_switch", level, chosen, s_eff, true)
-		return chosen
-
-	# Обычное решение: повторить или сменить тип
-	var repeat: bool = _rng.randf() < s_eff
-	if repeat:
+	# Если группа не завершена - продолжаем тот же тип
+	if _group_size < _target_group_size:
 		chosen = _last_type
 		_streak_len += 1
-	else:
-		chosen = _choose_other(_last_type)
-		_last_type = chosen
-		_streak_len = 1
+		_group_size += 1
+		_step_cooldown()
+		_log("group_continue", level, chosen, s_eff, cooldown_active)
+		return chosen
 
-	_step_cooldown()
-	_log("normal", level, chosen, s_eff, cooldown_active)
+	# Группа завершена - выбираем новый тип и новую группу
+	chosen = _choose_other(_last_type)
+	_last_type = chosen
+	_streak_len = 1
+	_group_size = 1
+	_target_group_size = _rng.randi_range(2, group_size)  # новая случайная группа
+	_cooldown_left = cool_spawns
+	_log("group_switch", level, chosen, s_eff, true)
 	return chosen
 
 ## Просмотр следующего типа без влияния на состояние (для превью)
@@ -98,6 +101,8 @@ func peek_next(level: int) -> String:
 	var backup_last := _last_type
 	var backup_streak := _streak_len
 	var backup_cd := _cooldown_left
+	var backup_group_size := _group_size
+	var backup_target_group_size := _target_group_size
 
 	var t := get_next_donut_type(level)
 
@@ -106,6 +111,8 @@ func peek_next(level: int) -> String:
 	_last_type = backup_last
 	_streak_len = backup_streak
 	_cooldown_left = backup_cd
+	_group_size = backup_group_size
+	_target_group_size = backup_target_group_size
 	return t
 
 ## Получение текстуры пончика по типу
@@ -140,16 +147,18 @@ func _get_cfg(level: int) -> Dictionary:
 		return LEVEL_CONFIG[level]
 	
 	# Динамическое вычисление для уровней выше 5
-	var dynamic_stickiness: float = clamp(0.65 - 0.10 * (level - 1), 0.25, 0.65)
+	var dynamic_stickiness: float = clamp(0.75 - 0.10 * (level - 1), 0.25, 0.75)
 	var dynamic_streak_cap: int = 3  # Всегда максимум 3 пончика подряд
-	var dynamic_cooldown_factor: float = clamp(0.6 + (level - 1) * 0.05, 0.6, 0.8)
+	var dynamic_cooldown_factor: float = clamp(0.4 + (level - 1) * 0.05, 0.4, 0.8)
 	var dynamic_cooldown_spawns: int = 2 if level > 3 else 3
+	var dynamic_group_size: int = 2 if level > 3 else 3
 	
 	return {
 		"stickiness": dynamic_stickiness,
 		"streak_cap": dynamic_streak_cap,
 		"cooldown_factor": dynamic_cooldown_factor,
-		"cooldown_spawns": dynamic_cooldown_spawns
+		"cooldown_spawns": dynamic_cooldown_spawns,
+		"group_size": dynamic_group_size
 	}
 
 ## Случайный выбор любого типа пончика
@@ -182,4 +191,3 @@ func _log(event: String, level: int, t: String, s_eff: float, cooldown_active: b
 		"streak": _streak_len
 	}
 	_telemetry.append(row)
-	print("SpawnDirector:", row)

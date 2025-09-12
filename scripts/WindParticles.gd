@@ -38,8 +38,8 @@ func _setup_particles() -> void:
 	wind_particles.initial_velocity_max = PARTICLE_SPEED * 1.5
 	
 	# Размер частиц (больше и заметнее)
-	wind_particles.scale_amount_min = 1.0
-	wind_particles.scale_amount_max = 2.5
+	wind_particles.scale_amount_min = 2.0
+	wind_particles.scale_amount_max = 4.0
 	
 	# Цвет
 	wind_particles.color = WEAK_WIND_COLOR

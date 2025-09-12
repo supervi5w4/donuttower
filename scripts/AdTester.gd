@@ -8,9 +8,8 @@ func _ready() -> void:
 	if YandexSDK:
 		YandexSDK.rewarded_ad.connect(_on_rewarded_ad_result)
 		YandexSDK.interstitial_ad.connect(_on_interstitial_ad_result)
-		print("AdTester: Подключились к сигналам YandexSDK")
 	else:
-		print("AdTester: YandexSDK недоступен")
+		pass
 
 func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_accept"):  # Нажатие Enter
@@ -20,42 +19,36 @@ func _input(event: InputEvent) -> void:
 
 func _test_rewarded_ad() -> void:
 	"""Тестирует рекламу за вознаграждение"""
-	print("AdTester: Тестируем рекламу за вознаграждение...")
 	if YandexSDK:
 		YandexSDK.show_rewarded_ad()
 	else:
-		print("AdTester: YandexSDK недоступен")
+		pass
 
 func _test_interstitial_ad() -> void:
 	"""Тестирует обычную рекламу"""
-	print("AdTester: Тестируем обычную рекламу...")
 	if YandexSDK:
 		YandexSDK.show_interstitial_ad()
 	else:
-		print("AdTester: YandexSDK недоступен")
+		pass
 
 func _on_rewarded_ad_result(result: String) -> void:
 	"""Обработчик результата рекламы за вознаграждение"""
-	print("AdTester: Результат рекламы за вознаграждение: ", result)
-	
 	match result:
 		"rewarded":
-			print("AdTester: ✅ Игрок получил награду!")
+			pass
 		"closed":
-			print("AdTester: ❌ Реклама закрыта без награды")
+			pass
 		"opened":
-			print("AdTester: 📺 Реклама открыта")
+			pass
 		"error":
-			print("AdTester: ⚠️ Ошибка при показе рекламы")
+			pass
 
 func _on_interstitial_ad_result(result: String) -> void:
 	"""Обработчик результата обычной рекламы"""
-	print("AdTester: Результат обычной рекламы: ", result)
-	
 	match result:
 		"opened":
-			print("AdTester: 📺 Обычная реклама открыта")
+			pass
 		"closed":
-			print("AdTester: ❌ Обычная реклама закрыта")
+			pass
 		"error":
-			print("AdTester: ⚠️ Ошибка при показе обычной рекламы")
+			pass

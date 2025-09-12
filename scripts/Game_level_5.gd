@@ -402,7 +402,8 @@ func _update_donuts_sinking() -> void:
 				donut.freeze = true
 				
 				# Если песок накопился слишком высоко, это может означать поражение
-				if sand_accumulation_height > 150:  # Если песок поднялся слишком высоко
+				# НО только если игра еще не завершена
+				if sand_accumulation_height > 150 and _state == GameMode.PLAY:  # Если песок поднялся слишком высоко
 					_set_game_over()
 					return
 		else:
@@ -445,12 +446,13 @@ func _cleanup_fallen() -> void:
 	donuts_in_sand = donuts_in_sand.filter(func(data): return is_instance_valid(data["donut"]))
 	
 	# Дополнительная проверка для уровня 5 - если пончик упал слишком низко
-	if camera:
-		var camera_bottom = camera.position.y + 1280  # Высота экрана
-		var game_over_threshold = camera_bottom + 200  # Дополнительные 200 пикселей
-		
-		for donut in active_donuts:
-			if is_instance_valid(donut) and donut.position.y > game_over_threshold:
+	# Используем тот же bottom_y_limit, что и у пончиков
+	var bottom_limit = get_world_bottom_limit() + 100.0  # Тот же лимит, что у поnчиков
+	
+	for donut in active_donuts:
+		if is_instance_valid(donut) and donut.position.y > bottom_limit:
+			# Проверяем, что игра еще не завершена
+			if _state == GameMode.PLAY:
 				_set_game_over()
 				return
 	
@@ -468,5 +470,4 @@ func _show_win_panel() -> void:
 			game_over_panel.show_game_over_fallback(score, true)
 		else:
 			# Последний fallback - показываем панель старым способом
-			print("GameOverPanel не имеет нужных функций, используем старый способ для уровня 5")
 			game_over_panel.visible = true

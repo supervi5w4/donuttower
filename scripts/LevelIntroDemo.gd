@@ -34,3 +34,4 @@ func _input(event: InputEvent) -> void:
 				GameStateManager.reset_for_level(3)
 				get_tree().change_scene_to_file("res://scenes/Game_level_3.tscn")
 			KEY_H:
+				pass

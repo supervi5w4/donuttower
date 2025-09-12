@@ -7,10 +7,10 @@ var current_language: String = "ru"
 var available_languages: Array[String] = ["ru", "en"]
 
 func _ready() -> void:
+	# Принудительно загружаем переводы ПЕРВЫМИ
+	_load_translations()
 	# Загружаем сохраненный язык
 	_load_language_setting()
-	# Принудительно загружаем переводы
-	_load_translations()
 	# Применяем язык
 	_set_language(current_language)
 
@@ -31,6 +31,8 @@ func _load_language_setting() -> void:
 	"""Загружает сохраненную настройку языка"""
 	# Принудительно устанавливаем русский язык по умолчанию
 	current_language = "ru"
+	# Также устанавливаем локаль в TranslationServer
+	TranslationServer.set_locale("ru")
 
 func _save_language_setting() -> void:
 	"""Сохраняет настройку языка"""

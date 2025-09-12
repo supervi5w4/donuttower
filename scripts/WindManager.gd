@@ -56,20 +56,20 @@ func get_wind_force() -> float:
 func get_wind_direction() -> String:
 	"""Получить направление ветра в виде строки"""
 	if wind_force > 0:
-		return "вправо"
+		return "right"
 	elif wind_force < 0:
-		return "влево"
+		return "left"
 	else:
-		return "штиль"
+		return "calm"
 
 func get_wind_strength() -> String:
 	"""Получить силу ветра в виде строки"""
 	var abs_force = abs(wind_force)
 	if abs_force < 40:
-		return "слабый"
+		return "weak"
 	elif abs_force < 100:
-		return "умеренный"
+		return "moderate"
 	elif abs_force < 160:
-		return "сильный"
+		return "strong"
 	else:
-		return "штормовой"
+		return "stormy"

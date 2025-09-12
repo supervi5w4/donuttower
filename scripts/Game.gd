@@ -310,8 +310,9 @@ func _setup_game_over_panel() -> void:
 	next_level_button = game_over_panel.get_node_or_null("MainContainer/NextLevelButton")
 	
 	if next_level_button:
-		# Кнопка уже есть в сцене - просто подключаем сигнал
-		next_level_button.pressed.connect(_on_next_level_pressed)
+		# Кнопка уже есть в сцене - подключаем сигнал только если он еще не подключен
+		if not next_level_button.pressed.is_connected(_on_next_level_pressed):
+			next_level_button.pressed.connect(_on_next_level_pressed)
 		# Скрываем кнопку по умолчанию
 		next_level_button.visible = false
 	else:
@@ -319,7 +320,7 @@ func _setup_game_over_panel() -> void:
 		if level_number == 1 or level_number == 2 or level_number == 3 or level_number == 4:
 			next_level_button = Button.new()
 			next_level_button.name = "NextLevelButton"
-			next_level_button.text = "Следующий уровень"
+			next_level_button.text = tr("ui.next_level.button")
 			next_level_button.custom_minimum_size = Vector2(400, 80)
 			next_level_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 			next_level_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -356,8 +357,9 @@ func _setup_game_over_panel() -> void:
 				# Fallback: добавляем в конец
 				main_container.add_child(next_level_button)
 			
-			# Подключаем сигнал
-			next_level_button.pressed.connect(_on_next_level_pressed)
+			# Подключаем сигнал только если он еще не подключен
+			if not next_level_button.pressed.is_connected(_on_next_level_pressed):
+				next_level_button.pressed.connect(_on_next_level_pressed)
 			
 			# Скрываем кнопку по умолчанию
 			next_level_button.visible = false
@@ -371,15 +373,16 @@ func _setup_extra_life_button() -> void:
 	extra_life_button = game_over_panel.get_node_or_null("MainContainer/ExtraLifeButton")
 	
 	if extra_life_button:
-		# Кнопка уже есть в сцене - просто подключаем сигнал
-		extra_life_button.pressed.connect(_on_extra_life_pressed)
+		# Кнопка уже есть в сцене - подключаем сигнал только если он еще не подключен
+		if not extra_life_button.pressed.is_connected(_on_extra_life_pressed):
+			extra_life_button.pressed.connect(_on_extra_life_pressed)
 		# Скрываем кнопку по умолчанию
 		extra_life_button.visible = false
 	else:
 		# Создаем кнопку программно
 		extra_life_button = Button.new()
 		extra_life_button.name = "ExtraLifeButton"
-		extra_life_button.text = "Дополнительная жизнь"
+		extra_life_button.text = tr("ui.extra_life.button")
 		extra_life_button.custom_minimum_size = Vector2(400, 80)
 		extra_life_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		extra_life_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -416,8 +419,9 @@ func _setup_extra_life_button() -> void:
 			# Fallback: добавляем в конец
 			main_container.add_child(extra_life_button)
 		
-		# Подключаем сигнал
-		extra_life_button.pressed.connect(_on_extra_life_pressed)
+		# Подключаем сигнал только если он еще не подключен
+		if not extra_life_button.pressed.is_connected(_on_extra_life_pressed):
+			extra_life_button.pressed.connect(_on_extra_life_pressed)
 		
 		# Скрываем кнопку по умолчанию
 		extra_life_button.visible = false
@@ -516,7 +520,6 @@ func _show_win_panel() -> void:
 			game_over_panel.show_game_over_fallback(score, true)
 		else:
 			# Последний fallback - показываем панель старым способом
-			print("GameOverPanel не имеет нужных функций, используем старый способ для победы")
 			game_over_panel.visible = true
 
 # ===== Пул пончиков =====
@@ -729,7 +732,6 @@ func _handle_game_over() -> void:
 			game_over_panel.show_game_over_fallback(score, false)
 		else:
 			# Последний fallback - показываем панель старым способом
-			print("GameOverPanel не имеет нужных функций, используем старый способ")
 			game_over_panel.visible = true
 
 # ===== Сложность: скорость каретки и запас камеры =====
@@ -769,6 +771,9 @@ func _set_game_over() -> void:
 	# Обновляем отображение очков
 	_update_game_over_score()
 	
+	# Показываем панель поражения
+	_show_lose_panel()
+	
 	# Запускаем таймер для показа рекламы через 3 секунды
 	_start_ad_delay_timer()
 
@@ -782,7 +787,6 @@ func _show_lose_panel() -> void:
 			game_over_panel.show_game_over_fallback(score, false)
 		else:
 			# Последний fallback - показываем панель старым способом
-			print("GameOverPanel не имеет нужных функций, используем старый способ для проигрыша")
 			game_over_panel.visible = true
 
 func _on_next_level_pressed() -> void:
@@ -826,7 +830,6 @@ func _on_extra_life_pressed() -> void:
 		YandexSDK.show_rewarded_ad()
 	else:
 		# Для тестирования вне Yandex Games
-		print("Тестовый режим: показываем рекламу за вознаграждение")
 		# Симулируем успешный просмотр рекламы
 		_on_rewarded_ad("rewarded")
 
@@ -929,9 +932,11 @@ func _hide_game_over() -> void:
 
 # ===== Яндекс SDK и реклама =====
 func _setup_yandex_sdk() -> void:
-	# Подключаем сигналы от официального YandexSDK
-	YandexSDK.interstitial_ad.connect(_on_interstitial_ad)
-	YandexSDK.rewarded_ad.connect(_on_rewarded_ad)
+	# Подключаем сигналы от официального YandexSDK только если они еще не подключены
+	if not YandexSDK.interstitial_ad.is_connected(_on_interstitial_ad):
+		YandexSDK.interstitial_ad.connect(_on_interstitial_ad)
+	if not YandexSDK.rewarded_ad.is_connected(_on_rewarded_ad):
+		YandexSDK.rewarded_ad.connect(_on_rewarded_ad)
 	if not YandexSDK.stats_loaded.is_connected(_on_stats_loaded):
 		YandexSDK.stats_loaded.connect(_on_stats_loaded)
 	
@@ -974,14 +979,13 @@ func _on_rewarded_ad(result: String) -> void:
 	# Обработчик результата Rewarded рекламы
 	match result:
 		"opened":
-			print("Реклама за вознаграждение открыта")
+			pass
 		"rewarded":
-			print("Игрок получил награду за просмотр рекламы - перезапускаем уровень")
 			_restart_current_level()
 		"closed":
-			print("Реклама за вознаграждение закрыта без награды")
+			pass
 		"error":
-			print("Ошибка при показе рекламы за вознаграждение")
+			pass
 
 func _restart_current_level() -> void:
 	"""Перезапускает текущий уровень после просмотра рекламы"""
@@ -1254,12 +1258,4 @@ func _unfreeze_donuts_after_removal() -> void:
 # ===== Тестирование SpawnDirector =====
 func _test_spawn_director() -> void:
 	"""Тестовая функция для проверки работы SpawnDirector"""
-	print("=== Тест SpawnDirector ===")
-	print("Уровень: ", level_number)
-	
-	# Генерируем 20 пончиков и выводим результаты
-	for i in range(20):
-		var donut_type := SpawnDirector.get_next_donut_type(level_number)
-		print("Спавн ", i + 1, ": ", donut_type)
-	
-	print("=== Конец теста ===")
+	pass
