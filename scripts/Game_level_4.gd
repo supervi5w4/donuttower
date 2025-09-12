@@ -22,7 +22,7 @@ var gust_wind_timer: Timer
 var gust_wind_duration: float = 0.0
 
 func _ready() -> void:
-	# Вызываем родительский _ready()
+	# Вызываем родительский _ready() (включая запуск музыки)
 	super._ready()
 	
 	# Инициализируем систему ветра
@@ -188,6 +188,11 @@ func _apply_wind_to_falling_donuts() -> void:
 	if gust_wind_active:
 		wind_force += gust_wind_force
 	
+	# Определяем границы карты (используем константы из родительского класса)
+	var map_left = 0.0
+	var map_right = 720.0  # VIRT_W
+	var edge_zone_width = 300.0  # Зона ослабления ветра у краев карты
+	
 	# Применяем ветер ко всем активным пончикам
 	for donut in active_donuts:
 		if not is_instance_valid(donut):
@@ -195,8 +200,35 @@ func _apply_wind_to_falling_donuts() -> void:
 		
 		# Проверяем, что пончик падает (имеет положительную скорость по Y или не спит)
 		if donut.linear_velocity.y > 0 or not donut.sleeping:
-			# Применяем силу ветра (умеренная сила)
-			var wind_vector = Vector2(wind_force * 0.4, 0)  # Увеличиваем силу до 40%
+			# Получаем позицию пончика
+			var donut_x = donut.global_position.x
+			
+			# Вычисляем коэффициент ослабления ветра в зависимости от расстояния до края
+			var wind_reduction_factor = 1.0
+			
+			# Проверяем близость к левому краю
+			if donut_x < map_left + edge_zone_width:
+				var distance_to_left = donut_x - map_left
+				if distance_to_left < edge_zone_width:
+					# Ослабляем ветер при приближении к левому краю
+					wind_reduction_factor = distance_to_left / edge_zone_width
+					# Дополнительно ограничиваем силу ветра, направленную влево
+					if wind_force < 0:
+						wind_reduction_factor *= 0.3  # Сильно ослабляем ветер влево у левого края
+			
+			# Проверяем близость к правому краю
+			elif donut_x > map_right - edge_zone_width:
+				var distance_to_right = map_right - donut_x
+				if distance_to_right < edge_zone_width:
+					# Ослабляем ветер при приближении к правому краю
+					wind_reduction_factor = distance_to_right / edge_zone_width
+					# Дополнительно ограничиваем силу ветра, направленную вправо
+					if wind_force > 0:
+						wind_reduction_factor *= 0.3  # Сильно ослабляем ветер вправо у правого края
+			
+			# Применяем силу ветра с учетом ослабления
+			var final_wind_force = wind_force * wind_reduction_factor * 0.4  # Базовый коэффициент 40%
+			var wind_vector = Vector2(final_wind_force, 0)
 			donut.apply_central_force(wind_vector)
 
 func _recycle_donut(d: RigidBody2D) -> void:

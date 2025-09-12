@@ -8,7 +8,7 @@ extends "res://scripts/Game.gd"
 var falling_donuts: Array[RigidBody2D] = []
 
 func _ready() -> void:
-	# Вызываем родительский _ready()
+	# Вызываем родительский _ready() (включая запуск музыки)
 	super._ready()
 	
 	# Инициализируем систему ветра

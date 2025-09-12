@@ -26,7 +26,7 @@ var sand_storm_particles: GPUParticles2D
 var sand_storm_timer: Timer
 
 func _ready() -> void:
-	# Вызываем родительский _ready()
+	# Вызываем родительский _ready() (включая запуск музыки)
 	super._ready()
 	
 	# Инициализируем систему песка
@@ -459,21 +459,14 @@ func _cleanup_fallen() -> void:
 
 func _show_win_panel() -> void:
 	"""Переопределяем панель победы для уровня 5"""
-	# Обновляем заголовок с поздравлением
-	if game_over_label:
-		game_over_label.text = "🎉 Поздравляем! 🎉"
-	
-	# Обновляем счет
-	if game_over_score_label:
-		game_over_score_label.text = "🏜️ Вы прошли игру! 🏜️\nОчки: " + str(score)
-	
-	# Скрываем кнопку следующего уровня (ее не должно быть для финального уровня)
-	if next_level_button:
-		next_level_button.visible = false
-	
-	# Обновляем текст кнопки меню для финального уровня
-	if menu_button:
-		menu_button.text = "🏠 В главное меню"
-	
-	# Показываем панель
-	game_over_panel.visible = true
+	# Вызываем show_game_over с параметрами победы (без следующего уровня)
+	if game_over_panel:
+		if game_over_panel.has_method("show_game_over"):
+			game_over_panel.show_game_over(score, true, "", scene_file_path)
+		elif game_over_panel.has_method("show_game_over_fallback"):
+			# Используем fallback функцию
+			game_over_panel.show_game_over_fallback(score, true)
+		else:
+			# Последний fallback - показываем панель старым способом
+			print("GameOverPanel не имеет нужных функций, используем старый способ для уровня 5")
+			game_over_panel.visible = true

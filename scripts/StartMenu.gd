@@ -20,25 +20,36 @@ func _ready() -> void:
 		YandexSDK.init_player()
 		await YandexSDK.player_initialized
 	
-	# Проверяем наличие MusicManager
-	if has_node("/root/Music"):
-		music_manager = get_node("/root/Music")
-	else:
-		music_manager = null
+	# Ждем один кадр, чтобы автозагружаемые синглтоны успели инициализироваться
+	await get_tree().process_frame
+	
+	# Получаем MusicManager (автозагружаемый синглтон)
+	music_manager = Music
+	
+	# Отладочная информация
+	print("MusicManager доступен: ", music_manager != null)
 	
 	# Запускаем фоновую музыку
 	if music_manager:
-		music_manager.play_bgm("res://assets/music/music.mp3", -20.0, true)
+		print("Запускаем музыку через MusicManager")
+		music_manager.play_bgm("res://assets/music/music.mp3")
 	else:
+		print("MusicManager недоступен, создаем fallback плеер")
 		# Альтернативный способ - создаем локальный плеер
 		_create_fallback_music()
 	
 	# Настраиваем элементы управления в любом случае
 	_setup_music_controls()
+	
+	# Тестируем музыку через 2 секунды
+	await get_tree().create_timer(2.0).timeout
+	_test_music()
 
 func _on_start_button_pressed():
-	# Запускаем первый уровень с превью
-	LevelData.start_level(1)
+	# Запускаем первый уровень напрямую
+	LevelData.set_current_level(1)
+	GameStateManager.reset_for_level(1)
+	get_tree().change_scene_to_file("res://scenes/Game.tscn")
 
 func _on_language_button_pressed():
 	"""Обработчик нажатия кнопки смены языка"""
@@ -152,9 +163,21 @@ func _db_to_linear(db: float) -> float:
 
 func _create_fallback_music():
 	"""Создает резервный плеер музыки если MusicManager недоступен"""
+	print("Создаем fallback плеер музыки")
 	fallback_player = AudioStreamPlayer.new()
+	
+	# Убеждаемся, что шина Music существует
+	var music_bus = AudioServer.get_bus_index("Music")
+	if music_bus == -1:
+		AudioServer.add_bus(1)
+		AudioServer.set_bus_name(1, "Music")
+		music_bus = 1
+	
+	fallback_player.bus = "Music"
+	
 	var stream = load("res://assets/music/music.mp3") as AudioStream
 	if stream:
+		print("Музыкальный файл загружен успешно")
 		fallback_player.stream = stream
 		fallback_player.volume_db = -20.0
 		# Устанавливаем зацикливание для MP3/Ogg файлов
@@ -162,8 +185,9 @@ func _create_fallback_music():
 			stream.loop = true
 		add_child(fallback_player)
 		fallback_player.play()
+		print("Fallback плеер запущен")
 	else:
-		pass
+		print("Ошибка: не удалось загрузить музыкальный файл")
 
 func _update_fallback_sound():
 	"""Управляет состоянием fallback плеера"""
@@ -172,3 +196,19 @@ func _update_fallback_sound():
 			fallback_player.volume_db = -80.0  # Практически беззвучно
 		else:
 			fallback_player.volume_db = -20.0  # Нормальная громкость
+
+func _test_music():
+	"""Тестирует работу музыки"""
+	print("=== ТЕСТ МУЗЫКИ ===")
+	print("MusicManager доступен: ", music_manager != null)
+	if music_manager:
+		print("MusicManager играет: ", music_manager.is_playing())
+		print("Текущий трек: ", music_manager.get_current_track())
+		print("Громкость: ", music_manager.get_volume_db())
+	
+	if fallback_player:
+		print("Fallback плеер существует: ", fallback_player != null)
+		print("Fallback плеер играет: ", fallback_player.playing)
+		print("Fallback громкость: ", fallback_player.volume_db)
+	
+	print("=== КОНЕЦ ТЕСТА ===")

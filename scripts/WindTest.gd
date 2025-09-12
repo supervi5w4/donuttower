@@ -28,5 +28,7 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed:
 		match event.keycode:
 			KEY_1:
-				LevelData.start_level(3)
+				LevelData.set_current_level(3)
+				GameStateManager.reset_for_level(3)
+				get_tree().change_scene_to_file("res://scenes/Game_level_3.tscn")
 			KEY_H:

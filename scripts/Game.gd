@@ -45,7 +45,6 @@ enum GameMode { READY, PLAY, GAMEOVER }
 
 @onready var cam: Camera2D = get_node("Camera2D")
 @onready var ui_root: Control = get_node("UI/UIRoot")
-@onready var score_label: Label = get_node("UI/UIRoot/ScoreLabel")
 @onready var game_over_panel: Control = get_node("UI/UIRoot/GameOverPanel")
 @onready var game_over_score_label: Label = get_node("UI/UIRoot/GameOverPanel/MainContainer/ScoreLabel")
 @onready var menu_button: Button = get_node("UI/UIRoot/GameOverPanel/MainContainer/MenuButton")
@@ -53,9 +52,15 @@ enum GameMode { READY, PLAY, GAMEOVER }
 
 # Кнопка следующего уровня (создадим программно)
 var next_level_button: Button
+
+# Кнопка дополнительной жизни
+var extra_life_button: Button
 @onready var spawner: Spawner = get_node("Spawner")
 # YandexSDK теперь доступен как автозагруженный синглтон
 @onready var preview: PreviewDonut = spawner.get_node("PreviewDonut")
+
+# Белая вспышка экрана
+var white_flash_overlay: ColorRect
 
 # Таймер для задержки показа рекламы
 var _ad_delay_timer: Timer
@@ -106,10 +111,18 @@ const SETTLE_ANG_RATE := 0.03          # вклад в угловой порог
 func _ready() -> void:
 	get_node("/root/GameStateManager").reset_for_level(level_number)
 	
+	# Запускаем музыку через MusicManager
+	Music.play_bgm("res://assets/music/music.mp3")
+	
 	# Проверяем, есть ли GameOverPanel в сцене
 	var panel := get_node_or_null("UI/UIRoot/GameOverPanel")
 	if panel:
 		pass
+	
+	# Получаем информацию об уровне из LevelData
+	var level_info = LevelData.get_level_info(level_number)
+	if level_info:
+		score_to_unlock = level_info.target_score
 	
 	_level_ui = LevelUI.new()
 	add_child(_level_ui)
@@ -117,7 +130,6 @@ func _ready() -> void:
 	_level_ui.set_progress(0, score_to_unlock)
 	
 	# Устанавливаем цветовую схему для уровня
-	var level_info = LevelData.get_level_info(level_number)
 	if level_info and level_info.color_scheme:
 		_level_ui.set_color_scheme(level_info.color_scheme)
 	
@@ -125,11 +137,12 @@ func _ready() -> void:
 	
 	_load_best_from_disk()
 	_init_donut_pool()
-	_update_score_label()
 	_hide_game_over()
+	_setup_game_over_panel()
 	_setup_yandex_sdk()
 	_setup_ad_delay_timer()
 	_setup_language_manager()
+	_setup_white_flash()
 
 	# Камера
 	if cam != null:
@@ -142,7 +155,7 @@ func _ready() -> void:
 	_recalc_difficulty()
 	
 	# Инициализируем SpawnDirector для уровня
-	SpawnDirector.init_seed(Time.get_unix_time_from_system())
+	SpawnDirector.init_seed(int(Time.get_unix_time_from_system()))
 	SpawnDirector.reset(level_number)
 	
 	# Выбираем первый стиль и обновляем превью
@@ -282,46 +295,108 @@ func add_score(delta: int) -> void:
 	if _level_ui:
 		_level_ui.set_progress(score, score_to_unlock)
 
-	# Победа на уровнях
-	if level_number == 1 and score >= score_to_unlock:
-		get_node("/root/GameStateManager").unlock_level(2)
-		_open_win_panel()
-	elif level_number == 2 and score >= score_to_unlock:
-		get_node("/root/GameStateManager").unlock_level(3)
-		_open_win_panel()
-	elif level_number == 3 and score >= score_to_unlock:
-		get_node("/root/GameStateManager").unlock_level(4)
-		_open_win_panel()
-	elif level_number == 4 and score >= score_to_unlock:
-		# Для уровня 4 пока что просто показываем панель победы
-		_open_win_panel()
-	elif level_number == 5 and score >= score_to_unlock:
-		# Для уровня 5 показываем специальную панель победы
-		_open_win_panel()
+	# Победа на уровнях - используем данные из LevelData
+	var level_info = LevelData.get_level_info(level_number)
+	if level_info and score >= level_info.target_score:
+		if level_number < 5:
+			get_node("/root/GameStateManager").unlock_level(level_number + 1)
+			_level_completed_with_flash()
+		else:
+			# Для уровня 5 показываем специальную панель победы
+			_open_win_panel()
 
 func _setup_game_over_panel() -> void:
-	# Создаем кнопку "Следующий уровень" программно для уровней 1, 2 и 3
-	if level_number == 1 or level_number == 2 or level_number == 3:
-		next_level_button = Button.new()
-		next_level_button.name = "NextLevelButton"
-		next_level_button.text = "Следующий уровень"
-		next_level_button.custom_minimum_size = Vector2(400, 80)
-		next_level_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		next_level_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	# Сначала проверяем, есть ли уже кнопка в сцене
+	next_level_button = game_over_panel.get_node_or_null("MainContainer/NextLevelButton")
+	
+	if next_level_button:
+		# Кнопка уже есть в сцене - просто подключаем сигнал
+		next_level_button.pressed.connect(_on_next_level_pressed)
+		# Скрываем кнопку по умолчанию
+		next_level_button.visible = false
+	else:
+		# Кнопки нет в сцене - создаем программно для уровней 1, 2, 3 и 4
+		if level_number == 1 or level_number == 2 or level_number == 3 or level_number == 4:
+			next_level_button = Button.new()
+			next_level_button.name = "NextLevelButton"
+			next_level_button.text = "Следующий уровень"
+			next_level_button.custom_minimum_size = Vector2(400, 80)
+			next_level_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+			next_level_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			
+			# Стилизация кнопки в том же стиле, что и MenuButton
+			next_level_button.add_theme_color_override("font_hover_color", Color(0.2, 0.1, 0.05, 1))
+			next_level_button.add_theme_color_override("font_color", Color(0.2, 0.1, 0.05, 1))
+			next_level_button.add_theme_color_override("font_pressed_color", Color(0.2, 0.1, 0.05, 1))
+			next_level_button.add_theme_font_size_override("font_size", 24)
+			
+			# Применяем те же стили, что и у MenuButton
+			var menu_btn := game_over_panel.get_node("MainContainer/MenuButton")
+			if menu_btn:
+				# Копируем стили от MenuButton
+				next_level_button.add_theme_stylebox_override("hover", menu_btn.get_theme_stylebox("hover"))
+				next_level_button.add_theme_stylebox_override("pressed", menu_btn.get_theme_stylebox("pressed"))
+				next_level_button.add_theme_stylebox_override("normal", menu_btn.get_theme_stylebox("normal"))
+			
+			# Добавляем кнопку в MainContainer в правильную позицию
+			var main_container := game_over_panel.get_node("MainContainer")
+			
+			# Находим индекс кнопки MenuButton
+			var menu_button_index := -1
+			for i in range(main_container.get_child_count()):
+				if main_container.get_child(i).name == "MenuButton":
+					menu_button_index = i
+					break
+			
+			if menu_button_index >= 0:
+				# Добавляем кнопку перед MenuButton
+				main_container.add_child(next_level_button)
+				main_container.move_child(next_level_button, menu_button_index)
+			else:
+				# Fallback: добавляем в конец
+				main_container.add_child(next_level_button)
+			
+			# Подключаем сигнал
+			next_level_button.pressed.connect(_on_next_level_pressed)
+			
+			# Скрываем кнопку по умолчанию
+			next_level_button.visible = false
+	
+	# Создаем кнопку дополнительной жизни
+	_setup_extra_life_button()
+
+func _setup_extra_life_button() -> void:
+	"""Создает кнопку дополнительной жизни"""
+	# Проверяем, есть ли уже кнопка в сцене
+	extra_life_button = game_over_panel.get_node_or_null("MainContainer/ExtraLifeButton")
+	
+	if extra_life_button:
+		# Кнопка уже есть в сцене - просто подключаем сигнал
+		extra_life_button.pressed.connect(_on_extra_life_pressed)
+		# Скрываем кнопку по умолчанию
+		extra_life_button.visible = false
+	else:
+		# Создаем кнопку программно
+		extra_life_button = Button.new()
+		extra_life_button.name = "ExtraLifeButton"
+		extra_life_button.text = "Дополнительная жизнь"
+		extra_life_button.custom_minimum_size = Vector2(400, 80)
+		extra_life_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		extra_life_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		
 		# Стилизация кнопки в том же стиле, что и MenuButton
-		next_level_button.add_theme_color_override("font_hover_color", Color(0.2, 0.1, 0.05, 1))
-		next_level_button.add_theme_color_override("font_color", Color(0.2, 0.1, 0.05, 1))
-		next_level_button.add_theme_color_override("font_pressed_color", Color(0.2, 0.1, 0.05, 1))
-		next_level_button.add_theme_font_size_override("font_size", 24)
+		extra_life_button.add_theme_color_override("font_hover_color", Color(0.2, 0.1, 0.05, 1))
+		extra_life_button.add_theme_color_override("font_color", Color(0.2, 0.1, 0.05, 1))
+		extra_life_button.add_theme_color_override("font_pressed_color", Color(0.2, 0.1, 0.05, 1))
+		extra_life_button.add_theme_font_size_override("font_size", 24)
 		
 		# Применяем те же стили, что и у MenuButton
-		var menu_button := game_over_panel.get_node("MainContainer/MenuButton")
-		if menu_button:
+		var menu_btn := game_over_panel.get_node("MainContainer/MenuButton")
+		if menu_btn:
 			# Копируем стили от MenuButton
-			next_level_button.add_theme_stylebox_override("hover", menu_button.get_theme_stylebox("hover"))
-			next_level_button.add_theme_stylebox_override("pressed", menu_button.get_theme_stylebox("pressed"))
-		next_level_button.add_theme_stylebox_override("normal", menu_button.get_theme_stylebox("normal"))
+			extra_life_button.add_theme_stylebox_override("hover", menu_btn.get_theme_stylebox("hover"))
+			extra_life_button.add_theme_stylebox_override("pressed", menu_btn.get_theme_stylebox("pressed"))
+			extra_life_button.add_theme_stylebox_override("normal", menu_btn.get_theme_stylebox("normal"))
 		
 		# Добавляем кнопку в MainContainer в правильную позицию
 		var main_container := game_over_panel.get_node("MainContainer")
@@ -335,44 +410,114 @@ func _setup_game_over_panel() -> void:
 		
 		if menu_button_index >= 0:
 			# Добавляем кнопку перед MenuButton
-			main_container.add_child(next_level_button)
-			main_container.move_child(next_level_button, menu_button_index)
+			main_container.add_child(extra_life_button)
+			main_container.move_child(extra_life_button, menu_button_index)
 		else:
 			# Fallback: добавляем в конец
-			main_container.add_child(next_level_button)
+			main_container.add_child(extra_life_button)
 		
 		# Подключаем сигнал
-		next_level_button.pressed.connect(_on_next_level_pressed)
+		extra_life_button.pressed.connect(_on_extra_life_pressed)
 		
 		# Скрываем кнопку по умолчанию
-		next_level_button.visible = false
+		extra_life_button.visible = false
+
+func _setup_white_flash() -> void:
+	"""Настраивает белую вспышку экрана"""
+	white_flash_overlay = ColorRect.new()
+	white_flash_overlay.name = "WhiteFlashOverlay"
+	white_flash_overlay.color = Color.WHITE
+	white_flash_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	white_flash_overlay.visible = false
+	white_flash_overlay.z_index = 1000  # Поверх всего
+	add_child(white_flash_overlay)
+
+func _level_completed_with_flash() -> void:
+	"""Завершение уровня с белой вспышкой и автоматическим переходом"""
+	# Показываем белую вспышку
+	_show_white_flash()
+	
+	# Ждем завершения анимации вспышки, затем переходим к следующему уровню
+	await _white_flash_animation()
+	
+	# Автоматически переходим к следующему уровню
+	_go_to_next_level()
+
+func _show_white_flash() -> void:
+	"""Показывает белую вспышку экрана"""
+	if white_flash_overlay:
+		white_flash_overlay.visible = true
+		white_flash_overlay.color = Color(1, 1, 1, 0)  # Начинаем с прозрачного
+		
+		# Анимация появления белой вспышки
+		var tween = create_tween()
+		tween.tween_property(white_flash_overlay, "color", Color.WHITE, 0.3)
+		tween.tween_property(white_flash_overlay, "color", Color(1, 1, 1, 0), 0.3)
+
+func _white_flash_animation() -> void:
+	"""Ожидает завершения анимации белой вспышки"""
+	if white_flash_overlay:
+		var tween = create_tween()
+		tween.tween_property(white_flash_overlay, "color", Color.WHITE, 0.3)
+		await tween.finished
+		
+		tween = create_tween()
+		tween.tween_property(white_flash_overlay, "color", Color(1, 1, 1, 0), 0.3)
+		await tween.finished
+		
+		white_flash_overlay.visible = false
+
+func _go_to_next_level() -> void:
+	"""Автоматически переходит к следующему уровню"""
+	if level_number == 1:
+		LevelData.set_current_level(2)
+		GameStateManager.reset_for_level(2)
+		get_tree().change_scene_to_file("res://scenes/Game_level_2.tscn")
+	elif level_number == 2:
+		LevelData.set_current_level(3)
+		GameStateManager.reset_for_level(3)
+		get_tree().change_scene_to_file("res://scenes/Game_level_3.tscn")
+	elif level_number == 3:
+		LevelData.set_current_level(4)
+		GameStateManager.reset_for_level(4)
+		get_tree().change_scene_to_file("res://scenes/Game_level_4.tscn")
+	elif level_number == 4:
+		LevelData.set_current_level(5)
+		GameStateManager.reset_for_level(5)
+		get_tree().change_scene_to_file("res://scenes/Game_level_5.tscn")
+	elif level_number == 5:
+		# Для уровня 5 возвращаемся в главное меню
+		get_tree().change_scene_to_file("res://scenes/StartMenu.tscn")
 	else:
-		# Для уровня 2 и выше используем кнопку из сцены
-		next_level_button = game_over_panel.get_node_or_null("MainContainer/NextLevelButton")
-		if next_level_button:
-			next_level_button.pressed.connect(_on_next_level_pressed)
+		# Для остальных уровней возвращаемся в главное меню
+		get_tree().change_scene_to_file("res://scenes/StartMenu.tscn")
 
 func _open_win_panel() -> void:
 	_show_win_panel()
 
 func _show_win_panel() -> void:
-	# Обновляем заголовок
-	if game_over_label:
-		game_over_label.text = "Уровень пройден!"
+	# Определяем путь к следующему уровню
+	var next_scene_path = ""
+	if level_number == 1:
+		next_scene_path = "res://scenes/Game_level_2.tscn"
+	elif level_number == 2:
+		next_scene_path = "res://scenes/Game_level_3.tscn"
+	elif level_number == 3:
+		next_scene_path = "res://scenes/Game_level_4.tscn"
+	elif level_number == 4:
+		next_scene_path = "res://scenes/Game_level_5.tscn"
 	
-	# Обновляем счет
-	if game_over_score_label:
-		game_over_score_label.text = "Очки: " + str(score)
-	
-	# Показываем кнопку следующего уровня для уровней 1, 2 и 3
-	if next_level_button:
-		if level_number == 1 or level_number == 2 or level_number == 3:
-			next_level_button.visible = true
+	# Вызываем show_game_over с параметрами победы
+	if game_over_panel:
+		if game_over_panel.has_method("show_game_over"):
+			game_over_panel.show_game_over(score, true, next_scene_path, scene_file_path)
+		elif game_over_panel.has_method("show_game_over_fallback"):
+			# Используем fallback функцию
+			game_over_panel.show_game_over_fallback(score, true)
 		else:
-			next_level_button.visible = false
-	
-	# Показываем панель
-	game_over_panel.visible = true
+			# Последний fallback - показываем панель старым способом
+			print("GameOverPanel не имеет нужных функций, используем старый способ для победы")
+			game_over_panel.visible = true
 
 # ===== Пул пончиков =====
 func _init_donut_pool() -> void:
@@ -535,7 +680,6 @@ func _on_donut_settled(donut_obj: Object) -> void:
 		return
 
 	add_score(1)
-	_update_score_label()
 
 	# сохраняем Y до await (после await d может быть удалён)
 	var y_before := d.global_position.y
@@ -572,9 +716,21 @@ func _on_donut_missed_signal() -> void:
 
 func _handle_game_over() -> void:
 	# Останови спавн/инпут/таймеры по проектной логике
-	if game_over_panel:
-		game_over_panel.visible = true
 	_set_game_over()
+	if game_over_panel:
+		# Проверяем, что у GameOverPanel есть функция show_game_over
+		if game_over_panel.has_method("show_game_over"):
+			# Получаем путь к текущей сцене для перезапуска
+			var current_scene_path = scene_file_path
+			# Вызываем show_game_over с параметрами проигрыша
+			game_over_panel.show_game_over(score, false, "", current_scene_path)
+		elif game_over_panel.has_method("show_game_over_fallback"):
+			# Используем fallback функцию
+			game_over_panel.show_game_over_fallback(score, false)
+		else:
+			# Последний fallback - показываем панель старым способом
+			print("GameOverPanel не имеет нужных функций, используем старый способ")
+			game_over_panel.visible = true
 
 # ===== Сложность: скорость каретки и запас камеры =====
 func _recalc_difficulty() -> void:
@@ -612,43 +768,44 @@ func _set_game_over() -> void:
 	
 	# Обновляем отображение очков
 	_update_game_over_score()
-	_update_score_label()
-	
-	# Показываем панель поражения
-	_show_lose_panel()
 	
 	# Запускаем таймер для показа рекламы через 3 секунды
 	_start_ad_delay_timer()
 
 func _show_lose_panel() -> void:
-	# Обновляем заголовок
-	if game_over_label:
-		game_over_label.text = "Игра окончена!"
-	
-	# Обновляем счет
-	if game_over_score_label:
-		game_over_score_label.text = "Очки: " + str(score)
-	
-	# Скрываем кнопку следующего уровня
-	if next_level_button:
-		next_level_button.visible = false
-	
-	# Показываем панель
-	game_over_panel.visible = true
+	# Вызываем show_game_over с параметрами проигрыша
+	if game_over_panel:
+		if game_over_panel.has_method("show_game_over"):
+			game_over_panel.show_game_over(score, false, "", scene_file_path)
+		elif game_over_panel.has_method("show_game_over_fallback"):
+			# Используем fallback функцию
+			game_over_panel.show_game_over_fallback(score, false)
+		else:
+			# Последний fallback - показываем панель старым способом
+			print("GameOverPanel не имеет нужных функций, используем старый способ для проигрыша")
+			game_over_panel.visible = true
 
 func _on_next_level_pressed() -> void:
 	if level_number == 1:
-		# Переходим на уровень 2 через интро
-		LevelData.start_level(2)
+		# Переходим на уровень 2 напрямую
+		LevelData.set_current_level(2)
+		GameStateManager.reset_for_level(2)
+		get_tree().change_scene_to_file("res://scenes/Game_level_2.tscn")
 	elif level_number == 2:
-		# Переходим на уровень 3 через интро
-		LevelData.start_level(3)
+		# Переходим на уровень 3 напрямую
+		LevelData.set_current_level(3)
+		GameStateManager.reset_for_level(3)
+		get_tree().change_scene_to_file("res://scenes/Game_level_3.tscn")
 	elif level_number == 3:
-		# Переходим на уровень 4 через интро
-		LevelData.start_level(4)
+		# Переходим на уровень 4 напрямую
+		LevelData.set_current_level(4)
+		GameStateManager.reset_for_level(4)
+		get_tree().change_scene_to_file("res://scenes/Game_level_4.tscn")
 	elif level_number == 4:
-		# Переходим на уровень 5 через интро
-		LevelData.start_level(5)
+		# Переходим на уровень 5 напрямую
+		LevelData.set_current_level(5)
+		GameStateManager.reset_for_level(5)
+		get_tree().change_scene_to_file("res://scenes/Game_level_5.tscn")
 	elif level_number == 5:
 		# Для уровня 5 возвращаемся в главное меню
 		get_tree().change_scene_to_file("res://scenes/StartMenu.tscn")
@@ -661,6 +818,17 @@ func _on_restart_pressed() -> void:
 	_stop_ad_delay_timer()
 	# Загружаем главное меню вместо сброса игры
 	get_tree().change_scene_to_file("res://scenes/StartMenu.tscn")
+
+func _on_extra_life_pressed() -> void:
+	"""Обработчик нажатия кнопки дополнительной жизни"""
+	# Показываем рекламу за вознаграждение
+	if OS.has_feature("yandex"):
+		YandexSDK.show_rewarded_ad()
+	else:
+		# Для тестирования вне Yandex Games
+		print("Тестовый режим: показываем рекламу за вознаграждение")
+		# Симулируем успешный просмотр рекламы
+		_on_rewarded_ad("rewarded")
 
 
 func _reset_game() -> void:
@@ -682,7 +850,6 @@ func _reset_game() -> void:
 	score = 0
 	_last_spawn_time = 0.0
 	_state = GameMode.READY
-	_update_score_label()
 	_hide_game_over()
 	
 	# Камера: вернуть ориентиры; позицию — к стартовой
@@ -746,9 +913,6 @@ func _save_best_to_disk() -> void:
 func get_world_bottom_limit() -> float:
 	return cam.position.y + VIRT_H if cam != null else VIRT_H
 
-func _update_score_label() -> void:
-	if score_label:
-		score_label.text = tr("ui.hud.score") + ": " + str(score)
 
 func _update_game_over_score() -> void:
 	# Обновляет отображение счета в GameOverPanel
@@ -810,14 +974,40 @@ func _on_rewarded_ad(result: String) -> void:
 	# Обработчик результата Rewarded рекламы
 	match result:
 		"opened":
-			pass
+			print("Реклама за вознаграждение открыта")
 		"rewarded":
-			pass
+			print("Игрок получил награду за просмотр рекламы - перезапускаем уровень")
+			_restart_current_level()
 		"closed":
-			pass
+			print("Реклама за вознаграждение закрыта без награды")
 		"error":
-			pass
+			print("Ошибка при показе рекламы за вознаграждение")
 
+func _restart_current_level() -> void:
+	"""Перезапускает текущий уровень после просмотра рекламы"""
+	# Останавливаем таймер рекламы, если он активен
+	_stop_ad_delay_timer()
+	
+	# Скрываем панель Game Over
+	_hide_game_over()
+	
+	# Сбрасываем состояние игры
+	_reset_game()
+	
+	# Перезапускаем уровень
+	match level_number:
+		1:
+			get_tree().change_scene_to_file("res://scenes/Game.tscn")
+		2:
+			get_tree().change_scene_to_file("res://scenes/Game_level_2.tscn")
+		3:
+			get_tree().change_scene_to_file("res://scenes/Game_level_3.tscn")
+		4:
+			get_tree().change_scene_to_file("res://scenes/Game_level_4.tscn")
+		5:
+			get_tree().change_scene_to_file("res://scenes/Game_level_5.tscn")
+		_:
+			get_tree().change_scene_to_file("res://scenes/Game.tscn")
 
 func _on_data_loaded(data: Dictionary) -> void:
 	# Обработчик загрузки данных от YandexSDK
@@ -889,12 +1079,10 @@ func _setup_language_manager() -> void:
 		LanguageManager.language_changed.connect(_on_language_changed)
 		# Обновляем UI тексты сразу после подключения к сигналу
 		_update_all_ui_texts()
-		_update_score_label()
 		_update_game_over_score()
 
 func _on_language_changed(_language_code: String) -> void:
 	"""Обработчик смены языка - обновляем все тексты"""
-	_update_score_label()
 	_update_game_over_score()
 	_update_all_ui_texts()
 
@@ -905,9 +1093,9 @@ func _update_all_ui_texts() -> void:
 		menu_button.text = tr("ui.menu.button")
 	
 	# Обновляем заголовок Game Over
-	var game_over_label = get_node("UI/UIRoot/GameOverPanel/MainContainer/GameOverLabel")
-	if game_over_label:
-		game_over_label.text = tr("ui.gameover.title")
+	var game_over_lbl = get_node("UI/UIRoot/GameOverPanel/MainContainer/GameOverLabel")
+	if game_over_lbl:
+		game_over_lbl.text = tr("ui.gameover.title")
 	
 	
 
@@ -985,9 +1173,6 @@ func check_touch_chain() -> bool:
 	
 	return false
 
-func _update_score_ui() -> void:
-	_update_score_label()
-	_update_game_over_score()
 
 func _apply_chain_bonus_and_remove(indices: Array) -> void:
 	combo_lock = true
@@ -1003,7 +1188,6 @@ func _apply_chain_bonus_and_remove(indices: Array) -> void:
 	# Количество очков равно количеству удаляемых пончиков
 	var bonus_points: int = donuts_to_animate.size()
 	add_score(bonus_points)
-	_update_score_ui()
 	
 	# Анимируем все собранные объекты
 	for d in donuts_to_animate:
