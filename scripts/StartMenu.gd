@@ -32,12 +32,12 @@ func _ready() -> void:
 	
 	# Отладочная информация
 	
-	# Запускаем фоновую музыку
-	if music_manager:
-		music_manager.play_bgm("res://assets/music/music.mp3")
-	else:
-		# Альтернативный способ - создаем локальный плеер
-		_create_fallback_music()
+	# НЕ запускаем музыку автоматически - ждем user gesture
+	# if music_manager:
+	#	music_manager.play_bgm("res://assets/music/music.mp3")
+	# else:
+	#	# Альтернативный способ - создаем локальный плеер
+	#	_create_fallback_music()
 	
 	# Настраиваем элементы управления в любом случае
 	_setup_music_controls()
@@ -47,6 +47,9 @@ func _ready() -> void:
 	_test_music()
 
 func _on_start_button_pressed():
+	# Запускаем аудио контекст при первом взаимодействии
+	if music_manager:
+		music_manager.start_audio_context()
 	# Запускаем первый уровень напрямую
 	LevelData.set_current_level(1)
 	GameStateManager.reset_for_level(1)
@@ -54,6 +57,9 @@ func _on_start_button_pressed():
 
 func _on_language_button_pressed():
 	"""Обработчик нажатия кнопки смены языка"""
+	# Запускаем аудио контекст при первом взаимодействии
+	if music_manager:
+		music_manager.start_audio_context()
 	if language_manager:
 		language_manager.switch_language()
 
@@ -113,7 +119,9 @@ func _setup_music_controls():
 
 func _on_mute_button_pressed():
 	"""Обработчик нажатия кнопки мьюта"""
+	# Запускаем аудио контекст при первом взаимодействии
 	if music_manager:
+		music_manager.start_audio_context()
 		music_manager.toggle_mute()
 		_update_mute_button()
 	else:
@@ -124,7 +132,9 @@ func _on_mute_button_pressed():
 
 func _on_volume_slider_changed(value: float):
 	"""Обработчик изменения слайдера громкости"""
+	# Запускаем аудио контекст при первом взаимодействии
 	if music_manager:
+		music_manager.start_audio_context()
 		var volume_db = _linear_to_db(value)
 		music_manager.set_volume_db(volume_db)
 	else:

@@ -62,6 +62,12 @@ var extra_life_button: Button
 # Белая вспышка экрана
 var white_flash_overlay: ColorRect
 
+# Эффекты завершения уровня
+var level_complete_overlay: ColorRect
+var level_complete_label: Label
+var celebration_particles: GPUParticles2D
+var level_complete_timer: Timer
+
 # Таймер для задержки показа рекламы
 var _ad_delay_timer: Timer
 
@@ -111,8 +117,8 @@ const SETTLE_ANG_RATE := 0.03          # вклад в угловой порог
 func _ready() -> void:
 	get_node("/root/GameStateManager").reset_for_level(level_number)
 	
-	# Запускаем музыку через MusicManager
-	Music.play_bgm("res://assets/music/music.mp3")
+	# НЕ запускаем музыку автоматически - ждем user gesture
+	# Music.play_bgm("res://assets/music/music.mp3")
 	
 	# Проверяем, есть ли GameOverPanel в сцене
 	var panel := get_node_or_null("UI/UIRoot/GameOverPanel")
@@ -143,6 +149,7 @@ func _ready() -> void:
 	_setup_ad_delay_timer()
 	_setup_language_manager()
 	_setup_white_flash()
+	_setup_level_complete_effects()
 
 	# Камера
 	if cam != null:
@@ -200,6 +207,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		_on_tap(event.position)
 
 func _on_tap(_pos: Vector2) -> void:
+	# Запускаем аудио контекст при первом касании
+	Music.start_audio_context()
 	
 	if _state == GameMode.READY:
 		_start_game()
@@ -437,11 +446,18 @@ func _setup_white_flash() -> void:
 	add_child(white_flash_overlay)
 
 func _level_completed_with_flash() -> void:
-	"""Завершение уровня с белой вспышкой и автоматическим переходом"""
-	# Показываем белую вспышку
-	_show_white_flash()
+	"""Завершение уровня с выразительными эффектами и паузой"""
+	# Останавливаем игру
+	_state = GameMode.GAMEOVER
 	
-	# Ждем завершения анимации вспышки, затем переходим к следующему уровню
+	# Показываем выразительные эффекты завершения уровня
+	_show_level_complete_effects()
+	
+	# Ждем завершения всех эффектов и паузы
+	await _level_complete_animation()
+	
+	# Показываем белую вспышку перед переходом
+	_show_white_flash()
 	await _white_flash_animation()
 	
 	# Автоматически переходим к следующему уровню
@@ -818,6 +834,8 @@ func _on_next_level_pressed() -> void:
 		get_tree().change_scene_to_file("res://scenes/StartMenu.tscn")
 
 func _on_restart_pressed() -> void:
+	# Запускаем аудио контекст при первом взаимодействии
+	Music.start_audio_context()
 	# Останавливаем таймер рекламы, если он активен
 	_stop_ad_delay_timer()
 	# Загружаем главное меню вместо сброса игры
@@ -825,6 +843,8 @@ func _on_restart_pressed() -> void:
 
 func _on_extra_life_pressed() -> void:
 	"""Обработчик нажатия кнопки дополнительной жизни"""
+	# Запускаем аудио контекст при первом взаимодействии
+	Music.start_audio_context()
 	# Показываем рекламу за вознаграждение
 	if OS.has_feature("yandex"):
 		YandexSDK.show_rewarded_ad()
@@ -1259,3 +1279,160 @@ func _unfreeze_donuts_after_removal() -> void:
 func _test_spawn_director() -> void:
 	"""Тестовая функция для проверки работы SpawnDirector"""
 	pass
+
+# ===== Эффекты завершения уровня =====
+func _setup_level_complete_effects() -> void:
+	"""Настраивает эффекты для завершения уровня"""
+	
+	# Создаем оверлей для эффектов завершения уровня
+	level_complete_overlay = ColorRect.new()
+	level_complete_overlay.name = "LevelCompleteOverlay"
+	level_complete_overlay.color = Color(0, 0, 0, 0)  # Прозрачный
+	level_complete_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	level_complete_overlay.visible = false
+	level_complete_overlay.z_index = 500  # Поверх игры, но под UI
+	add_child(level_complete_overlay)
+	
+	# Создаем лейбл "Уровень пройден!"
+	level_complete_label = Label.new()
+	level_complete_label.name = "LevelCompleteLabel"
+	level_complete_label.text = tr("ui.level_complete.title")
+	level_complete_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	level_complete_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	level_complete_label.add_theme_font_size_override("font_size", 64)
+	level_complete_label.add_theme_color_override("font_color", Color.GOLD)
+	level_complete_label.add_theme_color_override("font_shadow_color", Color.BLACK)
+	level_complete_label.add_theme_constant_override("shadow_offset_x", 4)
+	level_complete_label.add_theme_constant_override("shadow_offset_y", 4)
+	
+	# Простое центрирование через размер и позицию
+	level_complete_label.size = Vector2(VIRT_W, 100)  # На всю ширину экрана
+	level_complete_label.position = Vector2(0, VIRT_H * 0.5 - 50)  # По центру по вертикали
+	
+	level_complete_label.visible = false
+	level_complete_label.z_index = 600
+	add_child(level_complete_label)
+	
+	# Создаем систему частиц для празднования
+	celebration_particles = GPUParticles2D.new()
+	celebration_particles.name = "CelebrationParticles"
+	celebration_particles.position = Vector2(VIRT_W * 0.5, VIRT_H * 0.5)  # Центр экрана
+	celebration_particles.z_index = 550
+	
+	# Настраиваем материал частиц
+	var particle_material = ParticleProcessMaterial.new()
+	particle_material.direction = Vector3(0, -1, 0)  # Взрыв вверх
+	particle_material.initial_velocity_min = 200.0
+	particle_material.initial_velocity_max = 400.0
+	particle_material.gravity = Vector3(0, 98, 0)  # Гравитация
+	particle_material.scale_min = 0.5
+	particle_material.scale_max = 1.5
+	particle_material.color = Color.GOLD
+	particle_material.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+	particle_material.emission_sphere_radius = 50.0
+	
+	celebration_particles.process_material = particle_material
+	celebration_particles.amount = 100
+	celebration_particles.lifetime = 3.0
+	celebration_particles.emitting = false
+	celebration_particles.visible = false
+	add_child(celebration_particles)
+	
+	# Создаем таймер для паузы
+	level_complete_timer = Timer.new()
+	level_complete_timer.name = "LevelCompleteTimer"
+	level_complete_timer.wait_time = 2.5  # 2.5 секунды паузы
+	level_complete_timer.one_shot = true
+	add_child(level_complete_timer)
+
+func _show_level_complete_effects() -> void:
+	"""Показывает эффекты завершения уровня"""
+	if not level_complete_overlay or not level_complete_label or not celebration_particles:
+		return
+	
+	# Показываем оверлей с анимацией
+	level_complete_overlay.visible = true
+	var tween = create_tween()
+	tween.tween_property(level_complete_overlay, "color", Color(0, 0, 0, 0.3), 0.5)
+	
+	# Показываем лейбл с анимацией
+	level_complete_label.visible = true
+	level_complete_label.scale = Vector2.ZERO
+	level_complete_label.modulate = Color.WHITE
+	
+	# Анимация появления лейбла
+	var label_tween = create_tween()
+	label_tween.tween_property(level_complete_label, "scale", Vector2.ONE, 0.8)
+	label_tween.tween_property(level_complete_label, "modulate", Color.GOLD, 0.3)
+	
+	# Добавляем пульсацию
+	var pulse_tween = create_tween()
+	pulse_tween.set_loops()
+	pulse_tween.tween_property(level_complete_label, "scale", Vector2(1.1, 1.1), 0.5)
+	pulse_tween.tween_property(level_complete_label, "scale", Vector2.ONE, 0.5)
+	
+	# Запускаем частицы празднования
+	celebration_particles.visible = true
+	celebration_particles.restart()
+	celebration_particles.emitting = true
+	
+	# Добавляем эффект "звездного взрыва" для всех пончиков на экране
+	_create_star_explosion_effect()
+
+func _create_star_explosion_effect() -> void:
+	"""Создает эффект звездного взрыва для всех пончиков"""
+	for donut in active_donuts:
+		if is_instance_valid(donut):
+			# Создаем маленькие частицы вокруг каждого пончика
+			var star_particles = GPUParticles2D.new()
+			star_particles.position = donut.global_position
+			star_particles.z_index = 400
+			
+			var star_material = ParticleProcessMaterial.new()
+			star_material.direction = Vector3(0, 0, 0)  # Взрыв во все стороны
+			star_material.initial_velocity_min = 50.0
+			star_material.initial_velocity_max = 150.0
+			star_material.gravity = Vector3(0, 50, 0)  # Слабая гравитация
+			star_material.scale_min = 0.2
+			star_material.scale_max = 0.8
+			star_material.color = Color.YELLOW
+			star_material.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+			star_material.emission_sphere_radius = 20.0
+			
+			star_particles.process_material = star_material
+			star_particles.amount = 20
+			star_particles.lifetime = 1.5
+			star_particles.emitting = true
+			
+			add_child(star_particles)
+			
+			# Удаляем частицы через время
+			var cleanup_timer = Timer.new()
+			cleanup_timer.wait_time = 2.0
+			cleanup_timer.one_shot = true
+			cleanup_timer.timeout.connect(star_particles.queue_free)
+			cleanup_timer.start()
+			star_particles.add_child(cleanup_timer)
+
+func _level_complete_animation() -> void:
+	"""Ожидает завершения анимации завершения уровня"""
+	# Запускаем таймер паузы
+	level_complete_timer.start()
+	await level_complete_timer.timeout
+	
+	# Скрываем эффекты
+	if level_complete_overlay:
+		var tween = create_tween()
+		tween.tween_property(level_complete_overlay, "color", Color(0, 0, 0, 0), 0.5)
+		await tween.finished
+		level_complete_overlay.visible = false
+	
+	if level_complete_label:
+		var label_tween = create_tween()
+		label_tween.tween_property(level_complete_label, "modulate", Color(1, 1, 1, 0), 0.5)
+		await label_tween.finished
+		level_complete_label.visible = false
+	
+	if celebration_particles:
+		celebration_particles.emitting = false
+		celebration_particles.visible = false
