@@ -78,10 +78,10 @@ func _ready():
 
 # Воспроизведение музыки с кросс-фейдом
 func play_bgm(track_path: String, volume_db: float = DEFAULT_VOLUME_DB, loop: bool = true):
-	print("MusicManager: Запуск музыки - ", track_path)
+	print("MusicManager.play_bgm вызван с треком: ", track_path)
 	
 	if current_track == track_path and active_player.playing:
-		print("MusicManager: Музыка уже играет")
+		print("Трек уже играет, пропускаем")
 		return # Уже играет эта композиция
 	
 	var stream = load(track_path) as AudioStream
@@ -89,17 +89,16 @@ func play_bgm(track_path: String, volume_db: float = DEFAULT_VOLUME_DB, loop: bo
 		push_error("Не удалось загрузить трек: " + track_path)
 		return
 	
-	print("MusicManager: Трек загружен успешно")
+	print("Трек загружен успешно, начинаем воспроизведение")
+	
 	current_track = track_path
 	target_volume_db = volume_db
 	
 	# Если музыка уже играет, делаем кросс-фейд
 	if active_player.playing and not is_crossfading:
-		print("MusicManager: Кросс-фейд к новому треку")
 		_crossfade_to_new_track(stream, loop)
 	else:
 		# Простое воспроизведение
-		print("MusicManager: Простое воспроизведение")
 		active_player.stream = stream
 		if stream is AudioStreamOggVorbis or stream is AudioStreamMP3:
 			stream.loop = loop
@@ -139,6 +138,7 @@ func _crossfade_to_new_track(stream: AudioStream, loop: bool):
 
 # Плавное появление
 func _fade_in(player: AudioStreamPlayer):
+	print("Начинаем fade_in для плеера")
 	player.volume_db = MIN_VOLUME_DB
 	fade_in_timer.start()
 	
