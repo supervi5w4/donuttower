@@ -13,7 +13,7 @@ func _ready() -> void:
 	var root := MarginContainer.new()
 	root.set_anchors_preset(Control.PRESET_TOP_WIDE)
 	root.offset_left = 16
-	root.offset_top = 60  # Опускаем ниже
+	root.offset_top = 20  # Поднимаем выше
 	root.offset_right = -16
 	root.offset_bottom = 120
 	layer.add_child(root)
@@ -39,7 +39,7 @@ func _ready() -> void:
 	_bar.max_value = _max
 	_bar.value = 0
 	_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_bar.custom_minimum_size.y = 20
+	_bar.custom_minimum_size.y = 35
 	
 	# Стилизация будет применена через set_color_scheme()
 	vb.add_child(_bar)
@@ -76,17 +76,17 @@ func _apply_color_scheme() -> void:
 		style_box.border_width_top = 2
 		style_box.border_width_bottom = 2
 		style_box.border_color = _color_scheme.secondary_color
-		style_box.corner_radius_top_left = 10
-		style_box.corner_radius_top_right = 10
-		style_box.corner_radius_bottom_left = 10
-		style_box.corner_radius_bottom_right = 10
+		style_box.corner_radius_top_left = 15
+		style_box.corner_radius_top_right = 15
+		style_box.corner_radius_bottom_left = 15
+		style_box.corner_radius_bottom_right = 15
 		_bar.add_theme_stylebox_override("background", style_box)
 		
 		# Стиль заполнителя полоски
 		var fill_style := StyleBoxFlat.new()
 		fill_style.bg_color = _color_scheme.primary_color
-		fill_style.corner_radius_top_left = 8
-		fill_style.corner_radius_top_right = 8
-		fill_style.corner_radius_bottom_left = 8
-		fill_style.corner_radius_bottom_right = 8
+		fill_style.corner_radius_top_left = 12
+		fill_style.corner_radius_top_right = 12
+		fill_style.corner_radius_bottom_left = 12
+		fill_style.corner_radius_bottom_right = 12
 		_bar.add_theme_stylebox_override("fill", fill_style)
