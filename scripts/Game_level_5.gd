@@ -461,10 +461,10 @@ func _cleanup_fallen() -> void:
 
 func _show_win_panel() -> void:
 	"""Переопределяем панель победы для уровня 5"""
-	# Вызываем show_game_over с параметрами победы (без следующего уровня)
+	# Вызываем show_game_over с переходом на 6-й уровень
 	if game_over_panel:
 		if game_over_panel.has_method("show_game_over"):
-			game_over_panel.show_game_over(score, true, "", scene_file_path)
+			game_over_panel.show_game_over(score, true, "res://scenes/Game_level_6.tscn", scene_file_path)
 		elif game_over_panel.has_method("show_game_over_fallback"):
 			# Используем fallback функцию
 			game_over_panel.show_game_over_fallback(score, true)

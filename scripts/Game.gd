@@ -68,12 +68,7 @@ var level_complete_label: Label
 var celebration_particles: GPUParticles2D
 var level_complete_timer: Timer
 
-# Таймер для задержки показа рекламы
-var _ad_delay_timer: Timer
-
-# Переменные для кулдауна рекламы
-var _last_ad_time: float = 0.0
-const AD_COOLDOWN := 50.0
+# Удалено: система рекламы по времени
 
 var donut_pool: Array[RigidBody2D] = []
 var active_donuts: Array[RigidBody2D] = []
@@ -117,8 +112,7 @@ const SETTLE_ANG_RATE := 0.03          # вклад в угловой порог
 func _ready() -> void:
 	get_node("/root/GameStateManager").reset_for_level(level_number)
 	
-	# НЕ запускаем музыку автоматически - ждем user gesture
-	# Music.play_bgm("res://assets/music/music.mp3")
+	# Музыка полностью отключена по запросу пользователя
 	
 	# Проверяем, есть ли GameOverPanel в сцене
 	var panel := get_node_or_null("UI/UIRoot/GameOverPanel")
@@ -146,7 +140,6 @@ func _ready() -> void:
 	_hide_game_over()
 	_setup_game_over_panel()
 	_setup_yandex_sdk()
-	_setup_ad_delay_timer()
 	_setup_language_manager()
 	_setup_white_flash()
 	_setup_level_complete_effects()
@@ -178,6 +171,9 @@ func _ready() -> void:
 	
 	# Инициализируем состояние уровня
 	_reset_level_state()
+	
+	# Подключаемся к событиям видимости страницы для обработки звуковых эффектов
+	_setup_visibility_handlers()
 
 func _process(_delta: float) -> void:
 	_cleanup_fallen()
@@ -207,8 +203,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		_on_tap(event.position)
 
 func _on_tap(_pos: Vector2) -> void:
-	# Запускаем аудио контекст при первом касании
-	Music.start_audio_context()
 	
 	if _state == GameMode.READY:
 		_start_game()
@@ -235,6 +229,9 @@ func _start_game() -> void:
 	
 	# Дополнительная очистка перед началом игры
 	_cleanup_fallen()
+	
+	# Музыка отключена по запросу пользователя
+	# 	print("Фоновая музыка запущена при начале игры")
 	
 	# Запускаем аналитику
 	YandexSDK.gameplay_started()
@@ -506,7 +503,12 @@ func _go_to_next_level() -> void:
 		GameStateManager.reset_for_level(5)
 		get_tree().change_scene_to_file("res://scenes/Game_level_5.tscn")
 	elif level_number == 5:
-		# Для уровня 5 возвращаемся в главное меню
+		# Переходим на уровень 6 напрямую
+		LevelData.set_current_level(6)
+		GameStateManager.reset_for_level(6)
+		get_tree().change_scene_to_file("res://scenes/Game_level_6.tscn")
+	elif level_number == 6:
+		# Для уровня 6 (финального) возвращаемся в главное меню
 		get_tree().change_scene_to_file("res://scenes/StartMenu.tscn")
 	else:
 		# Для остальных уровней возвращаемся в главное меню
@@ -789,9 +791,6 @@ func _set_game_over() -> void:
 	
 	# Показываем панель поражения
 	_show_lose_panel()
-	
-	# Запускаем таймер для показа рекламы через 3 секунды
-	_start_ad_delay_timer()
 
 func _show_lose_panel() -> void:
 	# Вызываем show_game_over с параметрами проигрыша
@@ -827,7 +826,12 @@ func _on_next_level_pressed() -> void:
 		GameStateManager.reset_for_level(5)
 		get_tree().change_scene_to_file("res://scenes/Game_level_5.tscn")
 	elif level_number == 5:
-		# Для уровня 5 возвращаемся в главное меню
+		# Переходим на уровень 6 напрямую
+		LevelData.set_current_level(6)
+		GameStateManager.reset_for_level(6)
+		get_tree().change_scene_to_file("res://scenes/Game_level_6.tscn")
+	elif level_number == 6:
+		# Для уровня 6 (финального) возвращаемся в главное меню
 		get_tree().change_scene_to_file("res://scenes/StartMenu.tscn")
 	else:
 		# Для остальных уровней возвращаемся в главное меню
@@ -835,16 +839,12 @@ func _on_next_level_pressed() -> void:
 
 func _on_restart_pressed() -> void:
 	# Запускаем аудио контекст при первом взаимодействии
-	Music.start_audio_context()
-	# Останавливаем таймер рекламы, если он активен
-	_stop_ad_delay_timer()
 	# Загружаем главное меню вместо сброса игры
 	get_tree().change_scene_to_file("res://scenes/StartMenu.tscn")
 
 func _on_extra_life_pressed() -> void:
 	"""Обработчик нажатия кнопки дополнительной жизни"""
 	# Запускаем аудио контекст при первом взаимодействии
-	Music.start_audio_context()
 	# Показываем рекламу за вознаграждение
 	if OS.has_feature("yandex"):
 		YandexSDK.show_rewarded_ad()
@@ -974,15 +974,13 @@ func _initialize_yandex_sdk_async() -> void:
 	else:
 		await YandexSDK.game_initialized
 	
+	# Настраиваем обработчики паузы и возобновления
+	YandexSDK.setup_pause_resume_handlers()
 	
-	# Вызываем Game Ready API
-	YandexSDK.game_ready()
-	
-	# Game Ready API вызывается без дополнительных сигналов
+	# НЕ вызываем Game Ready API здесь - он будет вызван когда игра действительно готова
+	print("YandexSDK инициализирован, Game Ready API будет вызван при начале игры")
 
-func _show_interstitial_ad() -> void:
-	# Показывает Interstitial рекламу при Game Over
-	YandexSDK.show_interstitial_ad()
+# Удалено: функция показа рекламы по времени
 
 
 func _on_interstitial_ad(result: String) -> void:
@@ -991,9 +989,11 @@ func _on_interstitial_ad(result: String) -> void:
 		"opened":
 			pass
 		"closed":
-			pass
+			# После закрытия interstitial рекламы тоже восстанавливаем музыку
+			print("Game: interstitial реклама закрыта, восстанавливаем музыку")
 		"error":
-			pass
+			# После ошибки interstitial рекламы тоже восстанавливаем музыку
+			print("Game: ошибка interstitial рекламы, восстанавливаем музыку")
 
 func _on_rewarded_ad(result: String) -> void:
 	# Обработчик результата Rewarded рекламы
@@ -1003,15 +1003,14 @@ func _on_rewarded_ad(result: String) -> void:
 		"rewarded":
 			_restart_current_level()
 		"closed":
-			pass
+			# После закрытия рекламы восстанавливаем музыку
+			print("Game: реклама закрыта, восстанавливаем музыку")
 		"error":
-			pass
+			# После ошибки рекламы тоже восстанавливаем музыку
+			print("Game: ошибка рекламы, восстанавливаем музыку")
 
 func _restart_current_level() -> void:
 	"""Перезапускает текущий уровень после просмотра рекламы"""
-	# Останавливаем таймер рекламы, если он активен
-	_stop_ad_delay_timer()
-	
 	# Скрываем панель Game Over
 	_hide_game_over()
 	
@@ -1063,38 +1062,7 @@ func _save_game_stats() -> void:
 		YandexSDK.increment_stats(increments)
 
 
-# ===== Таймер задержки рекламы =====
-func _setup_ad_delay_timer() -> void:
-	"""Настраивает таймер для задержки показа рекламы"""
-	_ad_delay_timer = Timer.new()
-	_ad_delay_timer.wait_time = 3.0  # 3 секунды задержки
-	_ad_delay_timer.one_shot = true
-	_ad_delay_timer.timeout.connect(_on_ad_delay_timeout)
-	add_child(_ad_delay_timer)
-
-func _start_ad_delay_timer() -> void:
-	"""Запускает таймер для показа рекламы"""
-	if _ad_delay_timer != null:
-		_ad_delay_timer.start()
-
-func _on_ad_delay_timeout() -> void:
-	"""Обработчик срабатывания таймера - показываем рекламу с проверкой кулдауна"""
-	var current_time: float = Time.get_ticks_msec() / 1000.0
-	var time_since_last_ad: float = current_time - _last_ad_time
-	
-	if time_since_last_ad >= AD_COOLDOWN:
-		# Обновляем время последнего показа рекламы
-		_last_ad_time = current_time
-		# Показываем рекламу
-		_show_interstitial_ad()
-	else:
-		# Кулдаун еще не прошел, просто сбрасываем таймер
-		pass
-
-func _stop_ad_delay_timer() -> void:
-	"""Останавливает таймер показа рекламы"""
-	if _ad_delay_timer != null and _ad_delay_timer.time_left > 0:
-		_ad_delay_timer.stop()
+# ===== Удалено: система рекламы по времени =====
 
 # ===== Управление языками =====
 func _setup_language_manager() -> void:
@@ -1280,6 +1248,120 @@ func _test_spawn_director() -> void:
 	"""Тестовая функция для проверки работы SpawnDirector"""
 	pass
 
+# Настройка обработчиков видимости страницы
+func _setup_visibility_handlers() -> void:
+	"""Настраивает обработчики видимости страницы для звуковых эффектов"""
+	# Подключаемся к событиям видимости окна
+	get_window().visibility_changed.connect(_on_visibility_changed)
+	
+	# Для веб-платформы дополнительно подключаемся к Page Visibility API
+	if OS.has_feature("web"):
+		_setup_page_visibility_api()
+
+# Обработка изменения видимости страницы
+func _on_visibility_changed() -> void:
+	"""Обработчик изменения видимости страницы для звуковых эффектов"""
+	if not get_window().visible:
+		print("Game: страница стала невидимой, приостанавливаем звуковые эффекты")
+		_pause_all_sound_effects()
+	else:
+		print("Game: страница стала видимой, возобновляем звуковые эффекты")
+		_resume_all_sound_effects()
+
+# Настройка Page Visibility API для веб-платформы
+func _setup_page_visibility_api() -> void:
+	"""Настраивает обработчики Page Visibility API для веб-платформы"""
+	if not OS.has_feature("web"):
+		return
+	
+	JavaScriptBridge.eval("""
+		(() => {
+			// Функция для отправки события в Godot
+			function notifyGameVisibilityChange(isVisible) {
+				if (window.godot && window.godot.call) {
+					window.godot.call('Game', '_on_page_visibility_change', [isVisible]);
+				}
+			}
+			
+			// Обработчики для Page Visibility API
+			document.addEventListener('visibilitychange', function() {
+				const isVisible = !document.hidden;
+				console.log('Game Page Visibility API: страница', isVisible ? 'видима' : 'скрыта');
+				notifyGameVisibilityChange(isVisible);
+			});
+			
+			// Дополнительные обработчики для различных событий
+			window.addEventListener('blur', function() {
+				console.log('Game Page Visibility API: окно потеряло фокус');
+				notifyGameVisibilityChange(false);
+			});
+			
+			window.addEventListener('focus', function() {
+				console.log('Game Page Visibility API: окно получило фокус');
+				notifyGameVisibilityChange(true);
+			});
+			
+			console.log('Game: Page Visibility API настроен');
+		})();
+	""")
+
+# Обработчик изменения видимости страницы через Page Visibility API
+func _on_page_visibility_change(is_visible: bool) -> void:
+	"""Обработчик изменения видимости страницы через Page Visibility API"""
+	print("Game: Page Visibility API - страница ", "видима" if is_visible else "скрыта")
+	
+	if not is_visible:
+		# Страница стала невидимой - приостанавливаем звуковые эффекты
+		print("Game: страница стала невидимой (Page Visibility API), приостанавливаем звуковые эффекты")
+		_pause_all_sound_effects()
+	else:
+		# Страница стала видимой - возобновляем звуковые эффекты
+		print("Game: страница стала видимой (Page Visibility API), возобновляем звуковые эффекты")
+		_resume_all_sound_effects()
+
+# Приостановка всех звуковых эффектов
+func _pause_all_sound_effects() -> void:
+	"""Приостанавливает все звуковые эффекты в игре"""
+	# Приостанавливаем все AudioStreamPlayer узлы в сцене
+	_pause_audio_nodes_recursive(self)
+	
+	# Приостанавливаем звуки пончиков
+	for donut in active_donuts:
+		if is_instance_valid(donut):
+			_pause_audio_nodes_recursive(donut)
+
+# Возобновление всех звуковых эффектов
+func _resume_all_sound_effects() -> void:
+	"""Возобновляет все звуковые эффекты в игре"""
+	# Возобновляем все AudioStreamPlayer узлы в сцене
+	_resume_audio_nodes_recursive(self)
+	
+	# Возобновляем звуки пончиков
+	for donut in active_donuts:
+		if is_instance_valid(donut):
+			_resume_audio_nodes_recursive(donut)
+
+# Рекурсивная приостановка аудио узлов
+func _pause_audio_nodes_recursive(node: Node) -> void:
+	"""Рекурсивно приостанавливает все AudioStreamPlayer узлы"""
+	if node is AudioStreamPlayer:
+		if node.playing:
+			node.stream_paused = true
+	
+	for child in node.get_children():
+		_pause_audio_nodes_recursive(child)
+
+# Рекурсивное возобновление аудио узлов
+func _resume_audio_nodes_recursive(node: Node) -> void:
+	"""Рекурсивно возобновляет все AudioStreamPlayer узлы"""
+	if node is AudioStreamPlayer:
+		if node.stream_paused:
+			node.stream_paused = false
+	
+	for child in node.get_children():
+		_resume_audio_nodes_recursive(child)
+
+
 # ===== Эффекты завершения уровня =====
 func _setup_level_complete_effects() -> void:
 	"""Настраивает эффекты для завершения уровня"""
@@ -1411,8 +1493,8 @@ func _create_star_explosion_effect() -> void:
 			cleanup_timer.wait_time = 2.0
 			cleanup_timer.one_shot = true
 			cleanup_timer.timeout.connect(star_particles.queue_free)
-			cleanup_timer.start()
 			star_particles.add_child(cleanup_timer)
+			cleanup_timer.start()
 
 func _level_complete_animation() -> void:
 	"""Ожидает завершения анимации завершения уровня"""
