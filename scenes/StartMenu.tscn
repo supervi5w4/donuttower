@@ -71,35 +71,6 @@ theme_override_styles/pressed = SubResource("StyleBoxFlat_button")
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
 text = "RU"
 
-[node name="MusicControls" type="VBoxContainer" parent="."]
-visible = false
-layout_mode = 1
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -200.0
-offset_top = 80.0
-offset_right = -20.0
-offset_bottom = 160.0
-grow_horizontal = 0
-
-[node name="MuteButton" type="Button" parent="MusicControls"]
-layout_mode = 2
-theme_override_colors/font_hover_color = Color(0.2, 0.1, 0.05, 1)
-theme_override_colors/font_color = Color(0.2, 0.1, 0.05, 1)
-theme_override_colors/font_pressed_color = Color(0.2, 0.1, 0.05, 1)
-theme_override_font_sizes/font_size = 20
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_button")
-theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-text = "ui.sound.on"
-
-[node name="VolumeSlider" type="HSlider" parent="MusicControls"]
-layout_mode = 2
-max_value = 1.0
-step = 0.01
-value = 0.6
-
 [node name="MainContainer" type="VBoxContainer" parent="."]
 layout_mode = 1
 anchors_preset = 8
@@ -144,5 +115,4 @@ script = ExtResource("4_i18n")
 translation_key = "ui.start.description"
 
 [connection signal="pressed" from="LanguageButton" to="." method="_on_language_button_pressed"]
-[connection signal="pressed" from="MusicControls/MuteButton" to="." method="_on_mute_button_pressed"]
 [connection signal="pressed" from="MainContainer/StartButton" to="." method="_on_start_button_pressed"]

@@ -1,29 +1,20 @@
-[gd_scene load_steps=12 format=3 uid="uid://m4fo5p61vdhr"]
+[gd_scene load_steps=12 format=3 uid="uid://dii50ai1tajt6"]
 
-[ext_resource type="Script" uid="uid://byv6i8g71nd1c" path="res://scripts/Game.gd" id="1_qbsmt"]
-[ext_resource type="PackedScene" uid="uid://cqtbisskdn4xt" path="res://scenes/spawner.tscn" id="2_cpr0p"]
-[ext_resource type="Texture2D" uid="uid://drp5t2avq3d51" path="res://assets/bg/Woll2.png" id="2_kiw3p"]
-[ext_resource type="Texture2D" uid="uid://6gna1v8xw7qh" path="res://assets/bg/Woll1.png" id="3_400sg"]
-[ext_resource type="Texture2D" uid="uid://r8faypj2t5le" path="res://assets/bg/bg_lvl_1.png" id="5_aug50"]
+[ext_resource type="Script" uid="uid://16ivbh35r11b" path="res://scripts/Game_level_5.gd" id="1_final_level"]
+[ext_resource type="Texture2D" uid="uid://3tka04miqt2d" path="res://assets/bg/Woll_5_1.png" id="2_dq7bt"]
+[ext_resource type="PackedScene" uid="uid://cqtbisskdn4xt" path="res://scenes/spawner.tscn" id="2_spawner"]
+[ext_resource type="Texture2D" uid="uid://dknoqkxtvl26l" path="res://assets/bg/Woll_5_2.png" id="3_dq7bt"]
+[ext_resource type="Script" uid="uid://44v48o6mvmuv" path="res://ui/GameOverPanel.gd" id="6_gameover"]
+[ext_resource type="Texture2D" uid="uid://pcmae5vu8nvf" path="res://assets/bg/bg_lvl_6.png" id="6_tokm1"]
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_kiw3p"]
-size = Vector2(44.0034, 33.3902)
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_left_wall"]
+size = Vector2(39.4514, 69.901)
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_400sg"]
-size = Vector2(21.4772, 30.1947)
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_right_wall"]
+size = Vector2(22.0886, 35.9146)
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_uwrxv"]
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_ground"]
 size = Vector2(720, 132)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_score_label"]
-bg_color = Color(1, 0.7, 0.3, 0.9)
-corner_radius_top_left = 20
-corner_radius_top_right = 20
-corner_radius_bottom_right = 20
-corner_radius_bottom_left = 20
-shadow_color = Color(0, 0, 0, 0.4)
-shadow_size = 6
-shadow_offset = Vector2(0, 3)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_hover"]
 bg_color = Color(1, 0.8, 0.4, 1)
@@ -36,7 +27,7 @@ shadow_size = 10
 shadow_offset = Vector2(0, 5)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button"]
-bg_color = Color(1, 0.6, 0.2, 1)
+bg_color = Color(0.9, 0.7, 0.3, 1)
 corner_radius_top_left = 25
 corner_radius_top_right = 25
 corner_radius_bottom_right = 25
@@ -45,42 +36,42 @@ shadow_color = Color(0, 0, 0, 0.3)
 shadow_size = 8
 shadow_offset = Vector2(0, 4)
 
-[node name="Game" type="Node2D"]
-script = ExtResource("1_qbsmt")
+[node name="Game2" type="Node2D"]
+script = ExtResource("1_final_level")
+level_number = 6
 
 [node name="LeftWall" type="StaticBody2D" parent="."]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="LeftWall"]
-position = Vector2(633.761, 1023.64)
+position = Vector2(621.001, 1024.94)
 rotation = 3.14159
-scale = Vector2(3.25043, -6.47328)
-shape = SubResource("RectangleShape2D_kiw3p")
+scale = Vector2(3.29519, -5.8066)
+shape = SubResource("RectangleShape2D_left_wall")
 
 [node name="Sprite2D" type="Sprite2D" parent="LeftWall"]
-position = Vector2(634.261, 1007.7)
-scale = Vector2(0.246604, 0.278704)
-texture = ExtResource("2_kiw3p")
+position = Vector2(614, 987)
+scale = Vector2(0.3, 0.3)
+texture = ExtResource("2_dq7bt")
 
 [node name="RightWall" type="StaticBody2D" parent="."]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="RightWall"]
-position = Vector2(79.5098, 1060.11)
-rotation = 3.14159
-scale = Vector2(6.30366, 5.71721)
-shape = SubResource("RectangleShape2D_400sg")
+position = Vector2(105.25, 1046.16)
+scale = Vector2(7.13036, -6.46879)
+shape = SubResource("RectangleShape2D_right_wall")
 
 [node name="Sprite2D" type="Sprite2D" parent="RightWall"]
-position = Vector2(80.0742, 1042.03)
-scale = Vector2(0.236473, 0.242244)
-texture = ExtResource("3_400sg")
+position = Vector2(110, 1053)
+scale = Vector2(0.25, 0.25)
+texture = ExtResource("3_dq7bt")
 
 [node name="Ground" type="StaticBody2D" parent="."]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Ground"]
 position = Vector2(360, 1214)
-shape = SubResource("RectangleShape2D_uwrxv")
+shape = SubResource("RectangleShape2D_ground")
 
-[node name="Spawner" parent="." instance=ExtResource("2_cpr0p")]
+[node name="Spawner" parent="." instance=ExtResource("2_spawner")]
 
 [node name="UI" type="CanvasLayer" parent="."]
 
@@ -92,56 +83,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="LivesUI" type="HBoxContainer" parent="UI/UIRoot"]
-layout_mode = 1
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -200.0
-offset_top = 16.0
-offset_right = -16.0
-offset_bottom = 80.0
-grow_horizontal = 0
-grow_vertical = 0
-size_flags_horizontal = 0
-size_flags_vertical = 0
-theme_override_constants/separation = 8
-
-[node name="Heart1" type="TextureRect" parent="UI/UIRoot/LivesUI"]
-texture_filter = 1
-custom_minimum_size = Vector2(48, 48)
-layout_mode = 2
-
-[node name="Heart2" type="TextureRect" parent="UI/UIRoot/LivesUI"]
-texture_filter = 1
-custom_minimum_size = Vector2(48, 48)
-layout_mode = 2
-
-[node name="Heart3" type="TextureRect" parent="UI/UIRoot/LivesUI"]
-texture_filter = 1
-custom_minimum_size = Vector2(48, 48)
-layout_mode = 2
-
-[node name="ScoreLabel" type="Label" parent="UI/UIRoot"]
-visible = false
-layout_mode = 1
-anchors_preset = 5
-anchor_left = 0.5
-anchor_right = 0.5
-offset_left = -180.0
-offset_top = 20.0
-offset_right = 180.0
-offset_bottom = 90.0
-grow_horizontal = 2
-mouse_filter = 0
-theme_override_colors/font_color = Color(0.2, 0.1, 0.05, 1)
-theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.6)
-theme_override_font_sizes/font_size = 28
-theme_override_styles/normal = SubResource("StyleBoxFlat_score_label")
-text = "0"
-horizontal_alignment = 1
-vertical_alignment = 1
-
 [node name="GameOverPanel" type="Control" parent="UI/UIRoot"]
 visible = false
 layout_mode = 1
@@ -150,6 +91,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+script = ExtResource("6_gameover")
 
 [node name="Background" type="ColorRect" parent="UI/UIRoot/GameOverPanel"]
 layout_mode = 1
@@ -193,7 +135,7 @@ text = "Score: 0"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="MenuButton" type="Button" parent="UI/UIRoot/GameOverPanel/MainContainer"]
+[node name="NextLevelButton" type="Button" parent="UI/UIRoot/GameOverPanel/MainContainer"]
 custom_minimum_size = Vector2(300, 80)
 layout_mode = 2
 theme_override_colors/font_hover_color = Color(0.2, 0.1, 0.05, 1)
@@ -201,6 +143,18 @@ theme_override_colors/font_color = Color(0.2, 0.1, 0.05, 1)
 theme_override_colors/font_pressed_color = Color(0.2, 0.1, 0.05, 1)
 theme_override_font_sizes/font_size = 24
 theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button")
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+text = "Next Level"
+
+[node name="MenuButton" type="Button" parent="UI/UIRoot/GameOverPanel/MainContainer"]
+custom_minimum_size = Vector2(300, 80)
+layout_mode = 2
+theme_override_colors/font_hover_color = Color(0.2, 0.1, 0.05, 1)
+theme_override_colors/font_color = Color(0.2, 0.1, 0.05, 1)
+theme_override_colors/font_pressed_color = Color(0.2, 0.1, 0.05, 1)
+theme_override_font_sizes/font_size = 24
+theme_override_styles/hover = SubResource("StyleBoxFlat_button")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button")
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
 text = "Menu"
@@ -218,12 +172,9 @@ position_smoothing_speed = 8.0
 [node name="Background" type="Sprite2D" parent="."]
 z_index = -100
 position = Vector2(337, 575)
-texture = ExtResource("5_aug50")
+texture = ExtResource("6_tokm1")
 
 [node name="YandexSDK" type="Node" parent="."]
 
-[node name="MusicPlayer" type="AudioStreamPlayer" parent="."]
-volume_db = -21.551
-autoplay = true
-
+[connection signal="pressed" from="UI/UIRoot/GameOverPanel/MainContainer/NextLevelButton" to="." method="_on_next_level_pressed"]
 [connection signal="pressed" from="UI/UIRoot/GameOverPanel/MainContainer/MenuButton" to="." method="_on_restart_pressed"]
