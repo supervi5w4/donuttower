@@ -106,6 +106,7 @@ func _ready() -> void:
 	extra_life_button.pressed.connect(_on_ads_pressed)
 	extra_life_button.visible = false  # Скрываем по умолчанию
 	
+	
 	# Подключаемся к сигналу рекламы YandexSDK
 	if YandexSDK:
 		YandexSDK.rewarded_ad.connect(_on_rewarded_ad_result)
@@ -118,7 +119,15 @@ func show_game_over(score: int, is_win: bool, next_scene_path: String = "", curr
 
 	# Обновляем заголовок
 	if game_over_label:
-		game_over_label.text = tr("ui.gameover.title") if not is_win else tr("ui.level.completed")
+		if not is_win:
+			game_over_label.text = tr("ui.gameover.title")
+		else:
+			# Показываем "Игра пройдена!" на 6-м уровне, иначе "Уровень пройден!"
+			var current_level_info = LevelData.get_current_level_info()
+			if current_level_info and current_level_info.level_number == 6:
+				game_over_label.text = tr("ui.game.completed")
+			else:
+				game_over_label.text = tr("ui.level.completed")
 
 	# Скрываем счет (убираем отображение очков)
 	if game_over_score_label:
@@ -162,7 +171,15 @@ func _update_all_texts() -> void:
 	
 	# Обновляем заголовок если панель видна
 	if visible and game_over_label:
-		game_over_label.text = tr("ui.gameover.title") if not _is_win else tr("ui.level.completed")
+		if not _is_win:
+			game_over_label.text = tr("ui.gameover.title")
+		else:
+			# Показываем "Игра пройдена!" на 6-м уровне, иначе "Уровень пройден!"
+			var current_level_info = LevelData.get_current_level_info()
+			if current_level_info and current_level_info.level_number == 6:
+				game_over_label.text = tr("ui.game.completed")
+			else:
+				game_over_label.text = tr("ui.level.completed")
 
 func _on_next_level_pressed() -> void:
 	if _next_scene_path != "":
@@ -203,7 +220,15 @@ func show_game_over_fallback(score: int, is_win: bool) -> void:
 	
 	# Обновляем заголовок
 	if game_over_label:
-		game_over_label.text = tr("ui.gameover.title_win") if not is_win else tr("ui.level.completed")
+		if not is_win:
+			game_over_label.text = tr("ui.gameover.title_win")
+		else:
+			# Показываем "Игра пройдена!" на 6-м уровне, иначе "Уровень пройден!"
+			var current_level_info = LevelData.get_current_level_info()
+			if current_level_info and current_level_info.level_number == 6:
+				game_over_label.text = tr("ui.game.completed")
+			else:
+				game_over_label.text = tr("ui.level.completed")
 	
 	# Скрываем счет (убираем отображение очков)
 	if game_over_score_label:
