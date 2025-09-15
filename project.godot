@@ -19,7 +19,6 @@ config/icon="res://icon.svg"
 
 GameStateManager="*res://autoloads/GameState.gd"
 LanguageManager="*res://scripts/LanguageManager.gd"
-Music="*res://singletons/MusicManager.gd"
 YandexSDK="*res://addons/godot-yandex-games-sdk-main/yandex_sdk.gd"
 LevelData="*res://autoloads/LevelData.gd"
 SpawnDirector="*res://scripts/systems/SpawnDirector.gd"
@@ -47,9 +46,10 @@ input_devices/pointing/emulate_mouse_from_touch=false
 [internationalization]
 
 locale/translations=PackedStringArray("res://i18n/ui_en.po", "res://i18n/ui_ru.po")
+locale="en"
 
 [rendering]
 
-renderer/rendering_method="compatibility"
+renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 textures/vram_compression/import_etc2_astc=true
