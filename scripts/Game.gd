@@ -45,7 +45,7 @@ enum GameMode { READY, PLAY, GAMEOVER }
 
 @onready var cam: Camera2D = get_node("Camera2D")
 @onready var ui_root: Control = get_node("UI/UIRoot")
-@onready var game_over_panel: Control = get_node("UI/UIRoot/GameOverPanel")
+var game_over_panel: Control
 @onready var game_over_score_label: Label = get_node("UI/UIRoot/GameOverPanel/MainContainer/ScoreLabel")
 @onready var menu_button: Button = get_node("UI/UIRoot/GameOverPanel/MainContainer/MenuButton")
 @onready var game_over_label: Label = get_node("UI/UIRoot/GameOverPanel/MainContainer/GameOverLabel")
@@ -55,9 +55,9 @@ var next_level_button: Button
 
 # Кнопка дополнительной жизни
 var extra_life_button: Button
-@onready var spawner: Spawner = get_node("Spawner")
+var spawner: Spawner
 # YandexSDK теперь доступен как автозагруженный синглтон
-@onready var preview: PreviewDonut = spawner.get_node("PreviewDonut")
+var preview: PreviewDonut
 
 # Белая вспышка экрана
 var white_flash_overlay: ColorRect
@@ -92,6 +92,27 @@ const SPAWNER_BASE_SPEED := 320.0      # px/s при Score=0 (увеличено
 const SPAWNER_MAX_FACTOR := 2.2        # максимум множителя скорости (увеличено с 1.6)
 const SPAWNER_SCORE_RATE := 0.035      # +3.5% скорости за очко (увеличено с 2%)
 
+# Модификаторы сложности по уровням
+const LEVEL_SPEED_MODIFIERS := {
+	1: 1.0,   # Уровень 1 - базовая скорость
+	2: 1.1,   # Уровень 2 - +10% скорости
+	3: 1.2,   # Уровень 3 - +20% скорости
+	4: 1.3,   # Уровень 4 - +30% скорости
+	5: 1.4,   # Уровень 5 - +40% скорости
+	6: 1.5,   # Уровень 6 - +50% скорости
+	7: 1.0    # Уровень 7 - базовая скорость (как первый уровень)
+}
+
+const LEVEL_COOLDOWN_MODIFIERS := {
+	1: 1.0,   # Уровень 1 - базовый кулдаун
+	2: 0.9,   # Уровень 2 - -10% кулдауна (быстрее спавн)
+	3: 0.8,   # Уровень 3 - -20% кулдауна
+	4: 0.7,   # Уровень 4 - -30% кулдауна
+	5: 0.6,   # Уровень 5 - -40% кулдауна
+	6: 0.5,   # Уровень 6 - -50% кулдауна
+	7: 1.0    # Уровень 7 - базовый кулдаун (как первый уровень)
+}
+
 const CAM_MARGIN_MIN := 0.35           # 35% высоты экрана
 const CAM_MARGIN_MAX := 0.45           # до 45% при большом счёте
 const CAM_MARGIN_SCORE_CAP := 20       # к ~20 очкам достигаем CAM_MARGIN_MAX
@@ -110,6 +131,7 @@ const SETTLE_RATE := 0.15              # вклад в линейный поро
 const SETTLE_ANG_RATE := 0.03          # вклад в угловой порог на очко (увеличено с 0.02)
 
 func _ready() -> void:
+	print("Game: _ready() начал выполнение для уровня ", level_number)
 	get_node("/root/GameStateManager").reset_for_level(level_number)
 	
 	# Музыка полностью отключена по запросу пользователя
@@ -157,6 +179,24 @@ func _ready() -> void:
 	# Инициализируем SpawnDirector для уровня
 	SpawnDirector.init_seed(int(Time.get_unix_time_from_system()))
 	SpawnDirector.reset(level_number)
+	
+	# Инициализируем spawner
+	spawner = get_node_or_null("Spawner")
+	if not spawner:
+		print("Ошибка: spawner не найден в сцене!")
+		return
+	
+	# Инициализируем preview после spawner
+	preview = spawner.get_node_or_null("PreviewDonut")
+	if not preview:
+		print("Ошибка: PreviewDonut не найден в spawner!")
+		return
+	
+	# Инициализируем game_over_panel
+	game_over_panel = get_node_or_null("UI/UIRoot/GameOverPanel")
+	if not game_over_panel:
+		print("Ошибка: game_over_panel не найден в сцене!")
+		return
 	
 	# Выбираем первый стиль и обновляем превью
 	_select_next_style()
@@ -233,8 +273,13 @@ func _start_game() -> void:
 	# Музыка отключена по запросу пользователя
 	# 	print("Фоновая музыка запущена при начале игры")
 	
+	# Game Ready API уже был вызван в StartMenu при загрузке игры
+	# Здесь мы только запускаем геймплей
+	
 	# Запускаем аналитику
+	print("Game: вызываем YandexSDK.gameplay_started()...")
 	YandexSDK.gameplay_started()
+	print("Game: YandexSDK.gameplay_started() вызван")
 	
 	# Спавним первый пончик
 	var spawn_pos: Vector2
@@ -247,7 +292,16 @@ func _start_game() -> void:
 
 func _cooldown_ready() -> bool:
 	var t: float = float(Time.get_ticks_msec()) / 1000.0
-	return t - _last_spawn_time >= SPAWN_COOLDOWN
+	
+	# Применяем модификатор уровня для кулдауна
+	var level_cooldown_modifier: float = LEVEL_COOLDOWN_MODIFIERS.get(level_number, 1.0)
+	if level_number > 6:
+		# Для уровней выше 6 - прогрессивное уменьшение кулдауна
+		level_cooldown_modifier = 0.5 - (level_number - 6) * 0.05
+		level_cooldown_modifier = max(0.2, level_cooldown_modifier)  # Минимум 20% от базового кулдауна
+	
+	var effective_cooldown: float = SPAWN_COOLDOWN * level_cooldown_modifier
+	return t - _last_spawn_time >= effective_cooldown
 
 func _select_next_style() -> void:
 	# Используем SpawnDirector для выбора следующего типа пончика
@@ -303,15 +357,26 @@ func add_score(delta: int) -> void:
 
 	# Победа на уровнях - используем данные из LevelData
 	var level_info = LevelData.get_level_info(level_number)
+	print("Game: Проверка победы - уровень: ", level_number, ", счет: ", score, ", цель: ", level_info.target_score if level_info else "НЕТ ДАННЫХ")
 	if level_info and score >= level_info.target_score:
+		print("Game: УСЛОВИЕ ПОБЕДЫ ВЫПОЛНЕНО! Уровень: ", level_number)
 		if level_number < 5:
 			get_node("/root/GameStateManager").unlock_level(level_number + 1)
 			_level_completed_with_flash()
-		else:
-			# Для уровня 5 показываем специальную панель победы
+		elif level_number == 5:
+			# Для уровня 5 переходим на уровень 6
+			get_node("/root/GameStateManager").unlock_level(6)
+			_level_completed_with_flash()
+		elif level_number == 6:
+			# Для уровня 6 (финального) показываем специальное поздравление
 			_open_win_panel()
 
 func _setup_game_over_panel() -> void:
+	# Проверяем, что game_over_panel инициализирован
+	if not game_over_panel:
+		print("Ошибка: game_over_panel не инициализирован!")
+		return
+	
 	# Сначала проверяем, есть ли уже кнопка в сцене
 	next_level_button = game_over_panel.get_node_or_null("MainContainer/NextLevelButton")
 	
@@ -375,6 +440,11 @@ func _setup_game_over_panel() -> void:
 
 func _setup_extra_life_button() -> void:
 	"""Создает кнопку дополнительной жизни"""
+	# Проверяем, что game_over_panel инициализирован
+	if not game_over_panel:
+		print("Ошибка: game_over_panel не инициализирован!")
+		return
+	
 	# Проверяем, есть ли уже кнопка в сцене
 	extra_life_button = game_over_panel.get_node_or_null("MainContainer/ExtraLifeButton")
 	
@@ -528,6 +598,9 @@ func _show_win_panel() -> void:
 		next_scene_path = "res://scenes/Game_level_4.tscn"
 	elif level_number == 4:
 		next_scene_path = "res://scenes/Game_level_5.tscn"
+	elif level_number == 5:
+		next_scene_path = "res://scenes/Game_level_6.tscn"
+	# Для уровня 6 (финального) next_scene_path остается пустым
 	
 	# Вызываем show_game_over с параметрами победы
 	if game_over_panel:
@@ -700,7 +773,7 @@ func _on_donut_settled(donut_obj: Object) -> void:
 	if d == null or not is_instance_valid(d):
 		return
 
-	add_score(1)
+	add_score(1)  # 1 donut = 100 point
 
 	# сохраняем Y до await (после await d может быть удалён)
 	var y_before := d.global_position.y
@@ -754,12 +827,19 @@ func _handle_game_over() -> void:
 
 # ===== Сложность: скорость каретки и запас камеры =====
 func _recalc_difficulty() -> void:
-	# Скорость каретки: base * clamp(1 + score*rate, 1, MAX_FACTOR)
+	# Скорость каретки: base * level_modifier * clamp(1 + score*rate, 1, MAX_FACTOR)
 	var factor: float = 1.0 + float(score) * SPAWNER_SCORE_RATE
 	if factor > SPAWNER_MAX_FACTOR:
 		factor = SPAWNER_MAX_FACTOR
+	
+	# Применяем модификатор уровня для скорости
+	var level_speed_modifier: float = LEVEL_SPEED_MODIFIERS.get(level_number, 1.0)
+	if level_number > 6:
+		# Для уровней выше 6 - прогрессивное увеличение
+		level_speed_modifier = 1.5 + (level_number - 6) * 0.1
+	
 	if spawner != null:
-		spawner.speed = SPAWNER_BASE_SPEED * factor
+		spawner.speed = SPAWNER_BASE_SPEED * level_speed_modifier * factor
 
 	# Запас камеры: линейная интерполяция от MIN к MAX к ~20 очкам
 	var t: float = float(score)
@@ -967,18 +1047,22 @@ func _initialize_yandex_sdk_async() -> void:
 	# Асинхронная инициализация YandexSDK
 	# Проверяем, что игра еще не инициализируется
 	if not YandexSDK.is_game_initialization_started and not YandexSDK.is_game_initialized:
+		print("YandexSDK: начинаем инициализацию игры...")
 		YandexSDK.init_game()
 		await YandexSDK.game_initialized
+		print("YandexSDK: игра инициализирована")
 	elif YandexSDK.is_game_initialized:
-		pass
+		print("YandexSDK: игра уже инициализирована")
 	else:
+		print("YandexSDK: ожидаем завершения инициализации...")
 		await YandexSDK.game_initialized
+		print("YandexSDK: инициализация завершена")
 	
 	# Настраиваем обработчики паузы и возобновления
 	YandexSDK.setup_pause_resume_handlers()
 	
 	# НЕ вызываем Game Ready API здесь - он будет вызван когда игра действительно готова
-	print("YandexSDK инициализирован, Game Ready API будет вызван при начале игры")
+	print("YandexSDK: инициализация завершена, Game Ready API будет вызван при начале игры")
 
 # Удалено: функция показа рекламы по времени
 
@@ -1029,6 +1113,8 @@ func _restart_current_level() -> void:
 			get_tree().change_scene_to_file("res://scenes/Game_level_4.tscn")
 		5:
 			get_tree().change_scene_to_file("res://scenes/Game_level_5.tscn")
+		6:
+			get_tree().change_scene_to_file("res://scenes/Game_level_6.tscn")
 		_:
 			get_tree().change_scene_to_file("res://scenes/Game.tscn")
 
@@ -1306,11 +1392,11 @@ func _setup_page_visibility_api() -> void:
 	""")
 
 # Обработчик изменения видимости страницы через Page Visibility API
-func _on_page_visibility_change(is_visible: bool) -> void:
+func _on_page_visibility_change(page_visible: bool) -> void:
 	"""Обработчик изменения видимости страницы через Page Visibility API"""
-	print("Game: Page Visibility API - страница ", "видима" if is_visible else "скрыта")
+	print("Game: Page Visibility API - страница ", "видима" if page_visible else "скрыта")
 	
-	if not is_visible:
+	if not page_visible:
 		# Страница стала невидимой - приостанавливаем звуковые эффекты
 		print("Game: страница стала невидимой (Page Visibility API), приостанавливаем звуковые эффекты")
 		_pause_all_sound_effects()
@@ -1378,7 +1464,11 @@ func _setup_level_complete_effects() -> void:
 	# Создаем лейбл "Уровень пройден!"
 	level_complete_label = Label.new()
 	level_complete_label.name = "LevelCompleteLabel"
-	level_complete_label.text = tr("ui.level_complete.title")
+	# Показываем "Игра пройдена!" на 6-м уровне, иначе "Уровень пройден!"
+	if level_number == 6:
+		level_complete_label.text = tr("ui.game.completed")
+	else:
+		level_complete_label.text = tr("ui.level_complete.title")
 	level_complete_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	level_complete_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	level_complete_label.add_theme_font_size_override("font_size", 64)

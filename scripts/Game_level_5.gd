@@ -460,14 +460,9 @@ func _cleanup_fallen() -> void:
 	super._cleanup_fallen()
 
 func _show_win_panel() -> void:
-	"""Переопределяем панель победы для уровня 5"""
-	# Вызываем show_game_over с переходом на 6-й уровень
-	if game_over_panel:
-		if game_over_panel.has_method("show_game_over"):
-			game_over_panel.show_game_over(score, true, "res://scenes/Game_level_6.tscn", scene_file_path)
-		elif game_over_panel.has_method("show_game_over_fallback"):
-			# Используем fallback функцию
-			game_over_panel.show_game_over_fallback(score, true)
-		else:
-			# Последний fallback - показываем панель старым способом
-			game_over_panel.visible = true
+	"""Переопределяем панель победы для уровня 5 - прямой переход на 6 уровень без интро"""
+	# Устанавливаем 6 уровень как текущий в LevelData
+	LevelData.set_current_level(6)
+	
+	# Прямой переход на 6 уровень без интро
+	get_tree().change_scene_to_file("res://scenes/Game_level_6.tscn")

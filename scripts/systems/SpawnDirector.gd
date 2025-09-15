@@ -7,11 +7,12 @@ extends Node
 var DONUT_TYPES := ["blue", "chocolate", "pink", "rainbow"]
 
 var LEVEL_CONFIG := {
-	1: { "stickiness": 0.85, "streak_cap": 5, "cooldown_factor": 0.4, "cooldown_spawns": 2, "group_size": 3 },
-	2: { "stickiness": 0.80, "streak_cap": 4, "cooldown_factor": 0.45, "cooldown_spawns": 2, "group_size": 3 },
-	3: { "stickiness": 0.75, "streak_cap": 4, "cooldown_factor": 0.5,  "cooldown_spawns": 2, "group_size": 2 },
-	4: { "stickiness": 0.70, "streak_cap": 3, "cooldown_factor": 0.55, "cooldown_spawns": 2, "group_size": 2 },
-	5: { "stickiness": 0.65, "streak_cap": 3, "cooldown_factor": 0.6,  "cooldown_spawns": 2, "group_size": 2 }
+	1: { "stickiness": 0.85, "streak_cap": 5, "cooldown_factor": 0.4, "cooldown_spawns": 2, "group_size": 3, "double_chance": 0.8 },
+	2: { "stickiness": 0.80, "streak_cap": 4, "cooldown_factor": 0.45, "cooldown_spawns": 2, "group_size": 3, "double_chance": 0.7 },
+	3: { "stickiness": 0.75, "streak_cap": 4, "cooldown_factor": 0.5,  "cooldown_spawns": 2, "group_size": 2, "double_chance": 0.6 },
+	4: { "stickiness": 0.70, "streak_cap": 3, "cooldown_factor": 0.55, "cooldown_spawns": 2, "group_size": 2, "double_chance": 0.5 },
+	5: { "stickiness": 0.65, "streak_cap": 3, "cooldown_factor": 0.6,  "cooldown_spawns": 2, "group_size": 2, "double_chance": 0.4 },
+	6: { "stickiness": 0.60, "streak_cap": 3, "cooldown_factor": 0.65, "cooldown_spawns": 2, "group_size": 2, "double_chance": 0.3 }
 }
 
 var _rng := RandomNumberGenerator.new()
@@ -70,7 +71,12 @@ func get_next_donut_type(level: int) -> String:
 		_last_type = chosen
 		_streak_len = 1
 		_group_size = 1
-		_target_group_size = _rng.randi_range(2, group_size)  # случайный размер группы 2-3
+		# Определяем размер группы с учетом вероятности двойных пончиков
+		var double_chance: float = cfg.get("double_chance", 0.5)
+		if _rng.randf() < double_chance:
+			_target_group_size = 2  # Двойной пончик
+		else:
+			_target_group_size = 1  # Одиночный пончик
 		_step_cooldown()
 		_log("first", level, chosen, s_eff, cooldown_active)
 		return chosen
@@ -89,7 +95,12 @@ func get_next_donut_type(level: int) -> String:
 	_last_type = chosen
 	_streak_len = 1
 	_group_size = 1
-	_target_group_size = _rng.randi_range(2, group_size)  # новая случайная группа
+	# Определяем размер новой группы с учетом вероятности двойных пончиков
+	var double_chance: float = cfg.get("double_chance", 0.5)
+	if _rng.randf() < double_chance:
+		_target_group_size = 2  # Двойной пончик
+	else:
+		_target_group_size = 1  # Одиночный пончик
 	_cooldown_left = cool_spawns
 	_log("group_switch", level, chosen, s_eff, true)
 	return chosen
@@ -146,19 +157,21 @@ func _get_cfg(level: int) -> Dictionary:
 	if LEVEL_CONFIG.has(level):
 		return LEVEL_CONFIG[level]
 	
-	# Динамическое вычисление для уровней выше 5
-	var dynamic_stickiness: float = clamp(0.75 - 0.10 * (level - 1), 0.25, 0.75)
+	# Динамическое вычисление для уровней выше 6
+	var dynamic_stickiness: float = clamp(0.60 - 0.05 * (level - 6), 0.25, 0.60)
 	var dynamic_streak_cap: int = 3  # Всегда максимум 3 пончика подряд
-	var dynamic_cooldown_factor: float = clamp(0.4 + (level - 1) * 0.05, 0.4, 0.8)
-	var dynamic_cooldown_spawns: int = 2 if level > 3 else 3
-	var dynamic_group_size: int = 2 if level > 3 else 3
+	var dynamic_cooldown_factor: float = clamp(0.65 + (level - 6) * 0.02, 0.65, 0.8)
+	var dynamic_cooldown_spawns: int = 2
+	var dynamic_group_size: int = 2
+	var dynamic_double_chance: float = clamp(0.3 - 0.05 * (level - 6), 0.1, 0.3)
 	
 	return {
 		"stickiness": dynamic_stickiness,
 		"streak_cap": dynamic_streak_cap,
 		"cooldown_factor": dynamic_cooldown_factor,
 		"cooldown_spawns": dynamic_cooldown_spawns,
-		"group_size": dynamic_group_size
+		"group_size": dynamic_group_size,
+		"double_chance": dynamic_double_chance
 	}
 
 ## Случайный выбор любого типа пончика
