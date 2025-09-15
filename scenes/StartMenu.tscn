@@ -96,7 +96,7 @@ theme_override_font_sizes/font_size = 24
 theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button")
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-text = "Start Playing"
+text = "Начать играть"
 script = ExtResource("4_i18n")
 translation_key = "ui.start.button"
 
@@ -106,8 +106,9 @@ layout_mode = 2
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.8)
 theme_override_font_sizes/font_size = 27
-text = "Drop donuts one by one — build a tower and catch the rhythm!
-4 одинаковых подряд? Лови сладкий бонус и взлетай в счёте!"
+text = "Скидывай пончики один за другим — строй башню и лови ритм!
+4 одинаковых подряд? Лови сладкий бонус и взлетай в счёте!
+Но помни: один промах — и всё развалится."
 horizontal_alignment = 1
 vertical_alignment = 1
 autowrap_mode = 2
