@@ -21,5 +21,7 @@ ui.next_level.button,Следующий уровень
 ui.level.intro.welcome,Добро пожаловать в мир пончиков! Здесь ты научишься основам строительства башен.
 ui.level.title,Уровень
 ui.level.completed,Уровень пройден!
-ui.gameover.title,Игра окончена
+ui.level_complete.title,Уровень пройден!
+ui.game.completed,Игра пройдена!
+ui.game.victory.instruction,Нажмите любую клавишу для возврата в меню
 ui.gameover.title_win,Игра окончена!

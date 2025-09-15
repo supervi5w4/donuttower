@@ -21,5 +21,7 @@ ui.next_level.button,Next Level
 ui.level.intro.welcome,Welcome to the world of donuts! Here you'll learn the basics of tower building.
 ui.level.title,Level
 ui.level.completed,Level Completed!
-ui.gameover.title,Game Over
+ui.level_complete.title,Level Complete!
+ui.game.completed,Game Completed!
+ui.game.victory.instruction,Press any key to return to menu
 ui.gameover.title_win,Game Over!

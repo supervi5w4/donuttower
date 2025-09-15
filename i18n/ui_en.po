@@ -55,7 +55,7 @@ msgid "ui.sound.off"
 msgstr "OFF"
 
 msgid "ui.extra_life.button"
-msgstr "Extra Life"
+msgstr "Get Extra Life for Watching Ad"
 
 msgid "ui.leaderboard.auth_required"
 msgstr "Authorization required to view leaderboard"
@@ -96,8 +96,11 @@ msgstr "Level"
 msgid "ui.level.completed"
 msgstr "Level Completed!"
 
-msgid "ui.gameover.title"
-msgstr "Game Over"
-
 msgid "ui.gameover.title_win"
 msgstr "Game Over!"
+
+msgid "ui.game.completed"
+msgstr "Game Completed!"
+
+msgid "ui.game.victory.instruction"
+msgstr "Press any key to return to menu"

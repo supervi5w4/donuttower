@@ -55,7 +55,7 @@ msgid "ui.sound.off"
 msgstr "ВЫКЛ"
 
 msgid "ui.extra_life.button"
-msgstr "Дополнительная жизнь"
+msgstr "Получить дополнительную жизнь за просмотр рекламы"
 
 msgid "ui.leaderboard.auth_required"
 msgstr "Требуется авторизация для просмотра таблицы результатов"
@@ -101,3 +101,9 @@ msgstr "Игра окончена"
 
 msgid "ui.gameover.title_win"
 msgstr "Игра окончена!"
+
+msgid "ui.game.completed"
+msgstr "Игра пройдена!"
+
+msgid "ui.game.victory.instruction"
+msgstr "Нажмите любую клавишу для возврата в меню"
