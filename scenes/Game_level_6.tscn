@@ -16,16 +16,6 @@ size = Vector2(22.0886, 35.9146)
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_ground"]
 size = Vector2(720, 132)
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_hover"]
-bg_color = Color(1, 0.8, 0.4, 1)
-corner_radius_top_left = 25
-corner_radius_top_right = 25
-corner_radius_bottom_right = 25
-corner_radius_bottom_left = 25
-shadow_color = Color(0, 0, 0, 0.4)
-shadow_size = 10
-shadow_offset = Vector2(0, 5)
-
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button"]
 bg_color = Color(0.9, 0.7, 0.3, 1)
 corner_radius_top_left = 25
@@ -35,6 +25,16 @@ corner_radius_bottom_left = 25
 shadow_color = Color(0, 0, 0, 0.3)
 shadow_size = 8
 shadow_offset = Vector2(0, 4)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_hover"]
+bg_color = Color(1, 0.8, 0.4, 1)
+corner_radius_top_left = 25
+corner_radius_top_right = 25
+corner_radius_bottom_right = 25
+corner_radius_bottom_left = 25
+shadow_color = Color(0, 0, 0, 0.4)
+shadow_size = 10
+shadow_offset = Vector2(0, 5)
 
 [node name="Game2" type="Node2D"]
 script = ExtResource("1_tokm1")
@@ -138,25 +138,25 @@ vertical_alignment = 1
 [node name="NextLevelButton" type="Button" parent="UI/UIRoot/GameOverPanel/MainContainer"]
 custom_minimum_size = Vector2(300, 80)
 layout_mode = 2
-theme_override_colors/font_hover_color = Color(0.2, 0.1, 0.05, 1)
 theme_override_colors/font_color = Color(0.2, 0.1, 0.05, 1)
 theme_override_colors/font_pressed_color = Color(0.2, 0.1, 0.05, 1)
+theme_override_colors/font_hover_color = Color(0.2, 0.1, 0.05, 1)
 theme_override_font_sizes/font_size = 24
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_button")
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 text = "Next Level"
 
 [node name="MenuButton" type="Button" parent="UI/UIRoot/GameOverPanel/MainContainer"]
 custom_minimum_size = Vector2(300, 80)
 layout_mode = 2
-theme_override_colors/font_hover_color = Color(0.2, 0.1, 0.05, 1)
 theme_override_colors/font_color = Color(0.2, 0.1, 0.05, 1)
 theme_override_colors/font_pressed_color = Color(0.2, 0.1, 0.05, 1)
+theme_override_colors/font_hover_color = Color(0.2, 0.1, 0.05, 1)
 theme_override_font_sizes/font_size = 24
-theme_override_styles/hover = SubResource("StyleBoxFlat_button")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_button")
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button")
 text = "Menu"
 
 [node name="Camera2D" type="Camera2D" parent="."]
