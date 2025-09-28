@@ -192,6 +192,11 @@ func _return_to_menu() -> void:
 	# Очищаем поздравление
 	_cleanup_victory_message()
 	
+	# Убеждаемся, что текущий язык сохранен перед переходом в стартовое меню
+	if LanguageManager:
+		LanguageManager._save_language_setting()
+		print("VictoryManager: язык сохранен перед переходом в стартовое меню")
+	
 	# Переходим в главное меню
 	get_tree().change_scene_to_file("res://scenes/StartMenu.tscn")
 	

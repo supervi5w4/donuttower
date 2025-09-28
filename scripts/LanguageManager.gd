@@ -12,11 +12,19 @@ func _ready() -> void:
 	_load_translations()
 	# Загружаем сохраненный язык (включая определение языка браузера)
 	_load_language_setting()
-	# Применяем язык
-	_set_language(current_language)
+	# Применяем язык только если он еще не установлен
+	if TranslationServer.get_locale() != current_language:
+		print("LanguageManager: применяем язык: ", current_language)
+		_set_language(current_language)
+	else:
+		print("LanguageManager: язык уже установлен: ", current_language)
+	# Дополнительная проверка: убеждаемся, что язык действительно сохранен
+	print("LanguageManager: финальная проверка - сохраняем язык еще раз для надежности")
+	_save_language_setting()
 	# Уведомляем о том, что язык готов
 	language_changed.emit(current_language)
 	print("LanguageManager: инициализация завершена, текущий язык: ", current_language)
+	print("LanguageManager: текущая локаль TranslationServer: ", TranslationServer.get_locale())
 
 func _load_translations() -> void:
 	"""Принудительно загружает файлы переводов"""
@@ -47,11 +55,45 @@ func _load_translations() -> void:
 
 func _load_language_setting() -> void:
 	"""Загружает сохраненную настройку языка"""
-	# Сначала пытаемся определить язык браузера
+	print("LanguageManager: начинаем загрузку настроек языка...")
+	
+	# Сначала пытаемся загрузить сохраненную настройку языка
+	var config = ConfigFile.new()
+	var config_path = "user://settings.cfg"
+	
+	print("LanguageManager: проверяем файл настроек: ", config_path)
+	print("LanguageManager: файл существует: ", FileAccess.file_exists(config_path))
+	
+	# Проверяем, существует ли файл настроек
+	if FileAccess.file_exists(config_path):
+		var err = config.load(config_path)
+		print("LanguageManager: результат загрузки конфига: ", err)
+		print("LanguageManager: конфиг имеет секцию settings: ", config.has_section("settings"))
+		
+		if err == OK and config.has_section_key("settings", "language"):
+			var saved_language = config.get_value("settings", "language")
+			# Проверяем, что сохраненный язык поддерживается
+			if saved_language in available_languages:
+				current_language = saved_language
+				print("LanguageManager: загружен сохраненный язык: ", current_language)
+				print("LanguageManager: устанавливаем локаль в TranslationServer: ", current_language)
+				# Устанавливаем локаль в TranslationServer
+				TranslationServer.set_locale(current_language)
+				print("LanguageManager: текущая локаль TranslationServer после загрузки: ", TranslationServer.get_locale())
+				return
+			else:
+				print("LanguageManager: сохраненный язык не поддерживается: ", saved_language)
+		else:
+			print("LanguageManager: не удалось загрузить сохраненный язык")
+	else:
+		print("LanguageManager: файл настроек не существует")
+	
+	# Если сохраненной настройки нет, определяем язык браузера только при первом запуске
+	print("LanguageManager: определяем язык браузера...")
 	var browser_language = _detect_browser_language()
-	if browser_language != "":
+	if browser_language != "" and browser_language in available_languages:
 		current_language = browser_language
-		print("LanguageManager: определен язык браузера: ", browser_language)
+		print("LanguageManager: определен язык браузера при первом запуске: ", browser_language)
 	else:
 		# Fallback: для веб-платформы используем английский, для других - русский
 		if OS.has_feature("web"):
@@ -61,20 +103,33 @@ func _load_language_setting() -> void:
 			current_language = "ru"
 			print("LanguageManager: используем русский язык по умолчанию")
 	
+	# Сохраняем выбранный язык только если это первый запуск
+	print("LanguageManager: сохраняем язык: ", current_language)
+	_save_language_setting()
+	
 	# Также устанавливаем локаль в TranslationServer
+	print("LanguageManager: устанавливаем локаль в TranslationServer: ", current_language)
 	TranslationServer.set_locale(current_language)
+	print("LanguageManager: текущая локаль TranslationServer: ", TranslationServer.get_locale())
 
 func _save_language_setting() -> void:
 	"""Сохраняет настройку языка"""
+	print("LanguageManager: сохраняем настройку языка: ", current_language)
 	var config = ConfigFile.new()
 	config.set_value("settings", "language", current_language)
-	config.save("user://settings.cfg")
+	var err = config.save("user://settings.cfg")
+	print("LanguageManager: результат сохранения конфига: ", err)
+	if err != OK:
+		print("LanguageManager: ошибка сохранения настроек языка!")
+	else:
+		print("LanguageManager: настройки языка успешно сохранены")
 
 func _set_language(language_code: String) -> void:
 	"""Устанавливает язык интерфейса"""
 	if language_code in available_languages:
 		current_language = language_code
 		TranslationServer.set_locale(language_code)
+		# Сохраняем язык сразу после установки
 		_save_language_setting()
 		print("LanguageManager: установлен язык: ", language_code)
 		print("LanguageManager: текущая локаль TranslationServer: ", TranslationServer.get_locale())
@@ -84,7 +139,9 @@ func _set_language(language_code: String) -> void:
 		# Устанавливаем русский по умолчанию
 		current_language = "ru"
 		TranslationServer.set_locale("ru")
+		_save_language_setting()
 		print("LanguageManager: установлен язык по умолчанию: ru")
+		language_changed.emit("ru")
 
 func switch_language() -> void:
 	"""Переключает между доступными языками"""

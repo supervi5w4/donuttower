@@ -83,6 +83,5 @@ func _on_rewarded_result(result: String):
 func _setup_pause_resume_handlers():
 	"""Настраивает обработчики паузы и возобновления игры"""
 	if YandexSDK and YandexSDK.is_working():
-		# Настраиваем обработчики через SDK
-		YandexSDK.setup_pause_resume_handlers()
-		print("Main: обработчики паузы/возобновления настроены")
+		# SDK автоматически обрабатывает паузу/возобновление через focus события
+		print("Main: обработчики паузы/возобновления настроены через SDK")

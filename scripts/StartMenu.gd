@@ -9,16 +9,22 @@ func _ready() -> void:
 	
 	# Подключаем сигнал смены языка
 	if language_manager:
+		print("StartMenu: подключаемся к LanguageManager")
 		language_manager.language_changed.connect(_on_language_changed)
 		# Ждем, пока LanguageManager полностью инициализируется
 		await language_manager.ready
+		print("StartMenu: LanguageManager готов, текущий язык: ", language_manager.get_current_language())
 		_update_language_button()
+	else:
+		print("StartMenu: LanguageManager недоступен!")
 	
 	# Принудительно проверяем и устанавливаем язык
+	print("StartMenu: проверяем правильность языка")
 	_ensure_correct_language()
 	
 	# Принудительно обновляем все тексты при загрузке
 	await get_tree().process_frame
+	print("StartMenu: обновляем все тексты")
 	_update_all_texts()
 	
 	print("StartMenu: подготовка завершена")
@@ -36,13 +42,25 @@ func _ready() -> void:
 		print("StartMenu: не на платформе Yandex, работаем в режиме разработки")
 	
 	print("StartMenu: готов к работе")
+	
+	# Проверяем, есть ли сохраненная игра для продолжения (после полной инициализации)
+	await get_tree().process_frame
+	_setup_game_buttons()
 
 
 func _on_start_button_pressed():
 	# GameplayAPI.start() будет вызван в Game.gd при начале игры
 	# Запускаем первый уровень напрямую
+	print("StartMenu: нажата кнопка старта игры")
+	
+	# Завершаем текущую игру если она есть (для новой игры)
+	if GameStateManager.has_game_in_progress():
+		print("StartMenu: завершаем текущую игру для начала новой")
+		GameStateManager.end_game()
+	
 	LevelData.set_current_level(1)
 	GameStateManager.reset_for_level(1)
+	GameStateManager.start_game(1)  # Сохраняем начало новой игры
 	get_tree().change_scene_to_file("res://scenes/Game.tscn")
 
 func _on_language_button_pressed():
@@ -56,6 +74,10 @@ func _on_language_changed(_language_code: String):
 	_update_language_button()
 	# Принудительно обновляем все тексты в интерфейсе
 	_update_all_texts()
+	# Убеждаемся, что язык сохранен в настройках
+	if language_manager:
+		language_manager._save_language_setting()
+		print("StartMenu: язык сохранен в настройках после смены")
 
 func _update_language_button():
 	"""Обновляет текст кнопки языка"""
@@ -77,6 +99,7 @@ func _ensure_correct_language():
 		if TranslationServer.get_locale() != current_lang:
 			print("StartMenu: языки не совпадают, принудительно устанавливаем: ", current_lang)
 			TranslationServer.set_locale(current_lang)
+			print("StartMenu: локаль TranslationServer после принудительной установки: ", TranslationServer.get_locale())
 		
 		# Проверяем, что переводы работают правильно
 		var test_translation = tr("ui.start.button")
@@ -87,6 +110,26 @@ func _ensure_correct_language():
 			print("StartMenu: переводы не работают, принудительно перезагружаем...")
 			language_manager._load_translations()
 			TranslationServer.set_locale(current_lang)
+			print("StartMenu: локаль TranslationServer после перезагрузки переводов: ", TranslationServer.get_locale())
+		
+		# Дополнительная проверка: убеждаемся, что язык действительно сохранен
+		# и не будет переопределен при следующей загрузке
+		print("StartMenu: убеждаемся, что язык сохранен в настройках")
+		language_manager._save_language_setting()
+		
+		# Финальная проверка
+		print("StartMenu: финальная проверка - LanguageManager: ", language_manager.get_current_language())
+		print("StartMenu: финальная проверка - TranslationServer: ", TranslationServer.get_locale())
+		print("StartMenu: финальная проверка - тестовый перевод: '", tr("ui.start.button"), "'")
+		
+		# Дополнительная защита: если язык все еще неправильный, принудительно исправляем
+		var final_lang = language_manager.get_current_language()
+		if TranslationServer.get_locale() != final_lang:
+			print("StartMenu: КРИТИЧЕСКАЯ ОШИБКА: язык не совпадает после всех проверок!")
+			print("StartMenu: принудительно исправляем: ", final_lang)
+			TranslationServer.set_locale(final_lang)
+			language_manager._save_language_setting()
+			print("StartMenu: исправление завершено")
 	else:
 		print("StartMenu: LanguageManager недоступен, используем язык по умолчанию")
 
@@ -164,4 +207,131 @@ func _on_window_visibility_changed():
 		if YandexSDK and YandexSDK.is_working():
 			YandexSDK.gameplay_started()
 			print("StartMenu: GameplayAPI.start() вызван при показе окна")
+
+# ===== Функции для работы с сохраненной игрой =====
+
+func _setup_game_buttons():
+	"""Настраивает кнопки игры - показывает кнопку продолжения если есть сохраненная игра"""
+	print("StartMenu: настраиваем кнопки игры...")
+	
+	# Проверяем, есть ли сохраненная игра
+	if GameStateManager.has_game_in_progress():
+		var saved_level = GameStateManager.get_game_level()
+		var saved_score = GameStateManager.get_game_score()
+		var saved_state = GameStateManager.get_game_state()
+		
+		print("StartMenu: найдена сохраненная игра - уровень: ", saved_level, ", счет: ", saved_score, ", состояние: ", saved_state)
+		
+		# Показываем кнопку "Продолжить игру" если есть сохраненная игра
+		_show_continue_button(saved_level, saved_score)
+		
+		# Переименовываем кнопку "Начать играть" в "Новая игра"
+		_rename_start_button_to_new_game()
+	else:
+		print("StartMenu: сохраненной игры нет, оставляем стандартную кнопку")
+		_restore_start_button()
+
+func _check_for_saved_game():
+	"""Проверяет, есть ли сохраненная игра для продолжения"""
+	print("StartMenu: проверяем сохраненную игру...")
+	print("StartMenu: GameStateManager.has_game_in_progress() = ", GameStateManager.has_game_in_progress())
+	
+	if GameStateManager.has_game_in_progress():
+		var saved_level = GameStateManager.get_game_level()
+		var saved_score = GameStateManager.get_game_score()
+		var saved_state = GameStateManager.get_game_state()
+		
+		print("StartMenu: найдена сохраненная игра - уровень: ", saved_level, ", счет: ", saved_score, ", состояние: ", saved_state)
+		
+		# Показываем кнопку "Продолжить игру" если есть сохраненная игра
+		_show_continue_button(saved_level, saved_score)
+	else:
+		print("StartMenu: сохраненной игры нет")
+
+func _show_continue_button(level: int, score: int):
+	"""Показывает кнопку продолжения игры"""
+	print("StartMenu: создаем кнопку продолжения для уровня ", level, " со счетом ", score)
+	
+	# Получаем кнопку "Начать играть"
+	var start_button = $MainContainer/StartButton
+	if not start_button:
+		print("StartMenu: кнопка StartButton не найдена!")
+		return
+	
+	print("StartMenu: кнопка StartButton найдена, создаем кнопку продолжения")
+	
+	# Создаем кнопку "Продолжить игру"
+	var continue_button = Button.new()
+	continue_button.name = "ContinueButton"
+	continue_button.text = tr("ui.continue.button") + " (Ур. " + str(level) + ")"
+	continue_button.custom_minimum_size = Vector2(400, 80)
+	continue_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	continue_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	
+	# Стилизация кнопки в том же стиле, что и StartButton
+	continue_button.add_theme_color_override("font_hover_color", Color(0.2, 0.1, 0.05, 1))
+	continue_button.add_theme_color_override("font_color", Color(0.2, 0.1, 0.05, 1))
+	continue_button.add_theme_color_override("font_pressed_color", Color(0.2, 0.1, 0.05, 1))
+	continue_button.add_theme_font_size_override("font_size", 24)
+	
+	# Копируем стили от StartButton
+	continue_button.add_theme_stylebox_override("hover", start_button.get_theme_stylebox("hover"))
+	continue_button.add_theme_stylebox_override("pressed", start_button.get_theme_stylebox("pressed"))
+	continue_button.add_theme_stylebox_override("normal", start_button.get_theme_stylebox("normal"))
+	
+	# Добавляем кнопку в MainContainer перед StartButton
+	var main_container = $MainContainer
+	main_container.add_child(continue_button)
+	main_container.move_child(continue_button, start_button.get_index())
+	
+	# Подключаем сигнал
+	continue_button.pressed.connect(_on_continue_button_pressed)
+	
+	print("StartMenu: кнопка продолжения создана и добавлена в интерфейс")
+
+func _on_continue_button_pressed():
+	"""Обработчик нажатия кнопки продолжения игры"""
+	if not GameStateManager.has_game_in_progress():
+		print("StartMenu: нет сохраненной игры для продолжения!")
+		return
+	
+	var saved_level = GameStateManager.get_game_level()
+	var saved_score = GameStateManager.get_game_score()
+	
+	print("StartMenu: продолжаем игру - уровень: ", saved_level, ", счет: ", saved_score)
+	
+	# Устанавливаем текущий уровень
+	LevelData.set_current_level(saved_level)
+	GameStateManager.reset_for_level(saved_level)
+	
+	# Загружаем соответствующий уровень
+	match saved_level:
+		1:
+			get_tree().change_scene_to_file("res://scenes/Game.tscn")
+		2:
+			get_tree().change_scene_to_file("res://scenes/Game_level_2.tscn")
+		3:
+			get_tree().change_scene_to_file("res://scenes/Game_level_3.tscn")
+		4:
+			get_tree().change_scene_to_file("res://scenes/Game_level_4.tscn")
+		5:
+			get_tree().change_scene_to_file("res://scenes/Game_level_5.tscn")
+		6:
+			get_tree().change_scene_to_file("res://scenes/Game_level_6.tscn")
+		_:
+			get_tree().change_scene_to_file("res://scenes/Game.tscn")
+
+func _rename_start_button_to_new_game():
+	"""Переименовывает кнопку 'Начать играть' в 'Новая игра'"""
+	var start_button = $MainContainer/StartButton
+	if start_button:
+		start_button.text = tr("ui.new_game.button")
+		print("StartMenu: кнопка переименована в 'Новая игра'")
+
+func _restore_start_button():
+	"""Восстанавливает стандартный текст кнопки 'Начать играть'"""
+	var start_button = $MainContainer/StartButton
+	if start_button:
+		start_button.text = tr("ui.start.button")
+		print("StartMenu: кнопка восстановлена в 'Начать играть'")
 	

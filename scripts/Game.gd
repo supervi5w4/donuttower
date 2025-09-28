@@ -214,6 +214,9 @@ func _ready() -> void:
 	
 	# Подключаемся к событиям видимости страницы для обработки звуковых эффектов
 	_setup_visibility_handlers()
+	
+	# Проверяем, есть ли сохраненное состояние игры для восстановления (после инициализации всех компонентов)
+	_restore_game_state_if_needed()
 
 func _process(_delta: float) -> void:
 	_cleanup_fallen()
@@ -266,6 +269,9 @@ func _on_tap(_pos: Vector2) -> void:
 
 func _start_game() -> void:
 	_state = GameMode.PLAY
+	
+	# Сохраняем состояние начала игры
+	_save_current_game_state()
 	
 	# Дополнительная очистка перед началом игры
 	_cleanup_fallen()
@@ -351,6 +357,9 @@ func add_score(delta: int) -> void:
 	score += delta
 	get_node("/root/GameStateManager").score = score
 	emit_signal("score_changed", score)
+	
+	# Сохраняем состояние игры при изменении счета
+	_save_current_game_state()
 
 	if _level_ui:
 		_level_ui.set_progress(score, score_to_unlock)
@@ -559,29 +568,44 @@ func _go_to_next_level() -> void:
 	if level_number == 1:
 		LevelData.set_current_level(2)
 		GameStateManager.reset_for_level(2)
+		GameStateManager.start_game(2)  # Начинаем новую игру на уровне 2
 		get_tree().change_scene_to_file("res://scenes/Game_level_2.tscn")
 	elif level_number == 2:
 		LevelData.set_current_level(3)
 		GameStateManager.reset_for_level(3)
+		GameStateManager.start_game(3)  # Начинаем новую игру на уровне 3
 		get_tree().change_scene_to_file("res://scenes/Game_level_3.tscn")
 	elif level_number == 3:
 		LevelData.set_current_level(4)
 		GameStateManager.reset_for_level(4)
+		GameStateManager.start_game(4)  # Начинаем новую игру на уровне 4
 		get_tree().change_scene_to_file("res://scenes/Game_level_4.tscn")
 	elif level_number == 4:
 		LevelData.set_current_level(5)
 		GameStateManager.reset_for_level(5)
+		GameStateManager.start_game(5)  # Начинаем новую игру на уровне 5
 		get_tree().change_scene_to_file("res://scenes/Game_level_5.tscn")
 	elif level_number == 5:
 		# Переходим на уровень 6 напрямую
 		LevelData.set_current_level(6)
 		GameStateManager.reset_for_level(6)
+		GameStateManager.start_game(6)  # Начинаем новую игру на уровне 6
 		get_tree().change_scene_to_file("res://scenes/Game_level_6.tscn")
 	elif level_number == 6:
-		# Для уровня 6 (финального) возвращаемся в главное меню
+		# Для уровня 6 (финального) завершаем игру и возвращаемся в главное меню
+		GameStateManager.end_game()  # Завершаем игру
+		# Убеждаемся, что текущий язык сохранен перед переходом в стартовое меню
+		if LanguageManager:
+			LanguageManager._save_language_setting()
+			print("Game: язык сохранен перед переходом в стартовое меню (автопереход, уровень 6)")
 		get_tree().change_scene_to_file("res://scenes/StartMenu.tscn")
 	else:
-		# Для остальных уровней возвращаемся в главное меню
+		# Для остальных уровней завершаем игру и возвращаемся в главное меню
+		GameStateManager.end_game()  # Завершаем игру
+		# Убеждаемся, что текущий язык сохранен перед переходом в стартовое меню
+		if LanguageManager:
+			LanguageManager._save_language_setting()
+			print("Game: язык сохранен перед переходом в стартовое меню (автопереход, другие уровни)")
 		get_tree().change_scene_to_file("res://scenes/StartMenu.tscn")
 
 func _open_win_panel() -> void:
@@ -855,6 +879,9 @@ func _set_game_over() -> void:
 		return
 	_state = GameMode.GAMEOVER
 	
+	# Сохраняем состояние окончания игры
+	_save_current_game_state()
+	
 	# Останавливаем аналитику
 	YandexSDK.gameplay_stopped()
 	
@@ -889,36 +916,67 @@ func _on_next_level_pressed() -> void:
 		# Переходим на уровень 2 напрямую
 		LevelData.set_current_level(2)
 		GameStateManager.reset_for_level(2)
+		GameStateManager.start_game(2)  # Начинаем новую игру на уровне 2
 		get_tree().change_scene_to_file("res://scenes/Game_level_2.tscn")
 	elif level_number == 2:
 		# Переходим на уровень 3 напрямую
 		LevelData.set_current_level(3)
 		GameStateManager.reset_for_level(3)
+		GameStateManager.start_game(3)  # Начинаем новую игру на уровне 3
 		get_tree().change_scene_to_file("res://scenes/Game_level_3.tscn")
 	elif level_number == 3:
 		# Переходим на уровень 4 напрямую
 		LevelData.set_current_level(4)
 		GameStateManager.reset_for_level(4)
+		GameStateManager.start_game(4)  # Начинаем новую игру на уровне 4
 		get_tree().change_scene_to_file("res://scenes/Game_level_4.tscn")
 	elif level_number == 4:
 		# Переходим на уровень 5 напрямую
 		LevelData.set_current_level(5)
 		GameStateManager.reset_for_level(5)
+		GameStateManager.start_game(5)  # Начинаем новую игру на уровне 5
 		get_tree().change_scene_to_file("res://scenes/Game_level_5.tscn")
 	elif level_number == 5:
 		# Переходим на уровень 6 напрямую
 		LevelData.set_current_level(6)
 		GameStateManager.reset_for_level(6)
+		GameStateManager.start_game(6)  # Начинаем новую игру на уровне 6
 		get_tree().change_scene_to_file("res://scenes/Game_level_6.tscn")
 	elif level_number == 6:
-		# Для уровня 6 (финального) возвращаемся в главное меню
+		# Для уровня 6 (финального) завершаем игру и возвращаемся в главное меню
+		GameStateManager.end_game()  # Завершаем игру
+		# Убеждаемся, что текущий язык сохранен перед переходом в стартовое меню
+		if LanguageManager:
+			LanguageManager._save_language_setting()
+			print("Game: язык сохранен перед переходом в стартовое меню (кнопка следующий уровень, уровень 6)")
 		get_tree().change_scene_to_file("res://scenes/StartMenu.tscn")
 	else:
-		# Для остальных уровней возвращаемся в главное меню
+		# Для остальных уровней завершаем игру и возвращаемся в главное меню
+		GameStateManager.end_game()  # Завершаем игру
+		# Убеждаемся, что текущий язык сохранен перед переходом в стартовое меню
+		if LanguageManager:
+			LanguageManager._save_language_setting()
+			print("Game: язык сохранен перед переходом в стартовое меню (кнопка следующий уровень, другие уровни)")
 		get_tree().change_scene_to_file("res://scenes/StartMenu.tscn")
 
 func _on_restart_pressed() -> void:
 	# Запускаем аудио контекст при первом взаимодействии
+	
+	# Завершаем текущую игру
+	GameStateManager.end_game()
+	
+	# Убеждаемся, что текущий язык сохранен перед переходом в стартовое меню
+	if LanguageManager:
+		# Получаем текущий язык и принудительно сохраняем его
+		var current_lang = LanguageManager.get_current_language()
+		print("Game: текущий язык перед сохранением: ", current_lang)
+		LanguageManager._save_language_setting()
+		
+		# Дополнительная проверка: убеждаемся, что язык действительно сохранен
+		TranslationServer.set_locale(current_lang)
+		print("Game: язык сохранен перед переходом в стартовое меню: ", current_lang)
+		print("Game: локаль TranslationServer установлена: ", TranslationServer.get_locale())
+	
 	# Загружаем главное меню вместо сброса игры
 	get_tree().change_scene_to_file("res://scenes/StartMenu.tscn")
 
@@ -1608,3 +1666,65 @@ func _level_complete_animation() -> void:
 	if celebration_particles:
 		celebration_particles.emitting = false
 		celebration_particles.visible = false
+
+# ===== Функции для восстановления состояния игры =====
+
+func _restore_game_state_if_needed():
+	"""Восстанавливает состояние игры если есть сохраненные данные"""
+	if GameStateManager.has_game_in_progress():
+		var saved_level = GameStateManager.get_game_level()
+		var saved_score = GameStateManager.get_game_score()
+		var saved_state = GameStateManager.get_game_state()
+		
+		# Проверяем, что сохраненный уровень совпадает с текущим
+		if saved_level == level_number:
+			print("Game: восстанавливаем состояние игры - уровень: ", saved_level, ", счет: ", saved_score, ", состояние: ", saved_state)
+			
+			# Восстанавливаем счет
+			score = saved_score
+			get_node("/root/GameStateManager").score = score
+			
+			# Обновляем UI (ждем следующего кадра чтобы LevelUI был готов)
+			await get_tree().process_frame
+			if _level_ui:
+				_level_ui.set_progress(score, score_to_unlock)
+			
+			# Если игра была в состоянии "playing", начинаем сразу
+			if saved_state == "playing":
+				print("Game: восстанавливаем состояние PLAYING")
+				_state = GameMode.PLAY
+				# Спавним первый пончик для продолжения
+				var spawn_pos: Vector2
+				if spawner != null:
+					spawn_pos = spawner.get_spawn_position()
+				else:
+					spawn_pos = Vector2(VIRT_W * 0.5, 120.0)
+				_spawn_donut(spawn_pos)
+				_last_spawn_time = float(Time.get_ticks_msec()) / 1000.0
+			elif saved_state == "gameover":
+				print("Game: восстанавливаем состояние GAMEOVER")
+				_state = GameMode.GAMEOVER
+				_show_lose_panel()
+			else:
+				print("Game: восстанавливаем состояние READY")
+				_state = GameMode.READY
+		else:
+			print("Game: сохраненный уровень (", saved_level, ") не совпадает с текущим (", level_number, ")")
+
+func _save_current_game_state():
+	"""Сохраняет текущее состояние игры"""
+	print("Game: сохраняем состояние игры - уровень: ", level_number, ", счет: ", score, ", состояние: ", _get_game_state_string())
+	GameStateManager.update_game_state(level_number, score, _get_game_state_string())
+	print("Game: состояние игры сохранено")
+
+func _get_game_state_string() -> String:
+	"""Возвращает строковое представление текущего состояния игры"""
+	match _state:
+		GameMode.READY:
+			return "ready"
+		GameMode.PLAY:
+			return "playing"
+		GameMode.GAMEOVER:
+			return "gameover"
+		_:
+			return "ready"
