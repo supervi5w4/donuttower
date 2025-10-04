@@ -12,6 +12,8 @@ signal leaderboard_entries_loaded(data)
 signal leaderboard_error()
 signal stats_loaded(stats: Dictionary)
 signal check_auth(answer: bool)
+signal environment_variables_loaded(variables: Dictionary)
+signal server_time_loaded(time: int)
 
 
 var is_game_initialized : bool = false
@@ -46,6 +48,8 @@ var payload: String = ""
 @onready var callback_stats_loaded = JavaScriptBridge.create_callback(_stats_loaded)
 @onready var callback_leaderboard_player_entry_loaded = JavaScriptBridge.create_callback(_leaderboard_player_entry_loaded)
 @onready var callback_leaderboard_entries_loaded = JavaScriptBridge.create_callback(_leaderboard_entries_loaded)
+@onready var callback_environment_variables_loaded = JavaScriptBridge.create_callback(_environment_variables_loaded)
+@onready var callback_server_time_loaded = JavaScriptBridge.create_callback(_server_time_loaded)
 
 
 
@@ -127,6 +131,11 @@ func game_ready() -> void:
 	if not is_game_ready:
 		is_game_ready = true
 		window.GameReady()
+
+
+func loading_ready() -> void:
+	"""Алиас для game_ready() для совместимости"""
+	game_ready()
 
 # Analytics
 func gameplay_started() -> void:
@@ -347,8 +356,10 @@ func _leaderboard_entries_loaded(args) -> void:
 
 
 func _game_initialized(args) -> void:
+	print("asdasd  -   ", args)
 	app_id = args[0].app.id
 	lang = args[0].i18n.lang
+	LanguageManager._set_language(lang)
 	tld = args[0].i18n.tld
 	if args[0].payload == null: payload = ""
 	else: payload = args[0].payload
@@ -365,3 +376,38 @@ func _player_initialized(args) -> void:
 func _leaderboard_initialized(args) -> void:
 	is_leaderboard_initialized = true
 	leaderboard_initialized.emit()
+
+
+func load_environment_variables() -> void:
+	"""Загружает переменные окружения"""
+	if not OS.has_feature("yandex"):
+		return
+	if not is_game_initialized:
+		init_game()
+		await game_initialized
+	window.LoadEnvironmentVariables(callback_environment_variables_loaded)
+
+
+func get_server_time() -> void:
+	"""Получает серверное время"""
+	if not OS.has_feature("yandex"):
+		return
+	if not is_game_initialized:
+		init_game()
+		await game_initialized
+	window.GetServerTime(callback_server_time_loaded)
+
+
+func _environment_variables_loaded(args) -> void:
+	"""Обработчик загрузки переменных окружения"""
+	var result := {}
+	var keys = JavaScriptBridge.get_interface("Object").keys(args[0])
+	var values = JavaScriptBridge.get_interface("Object").values(args[0])
+	for i in range(keys.length):
+		result[keys[i]] = values[i]
+	environment_variables_loaded.emit(result)
+
+
+func _server_time_loaded(args) -> void:
+	"""Обработчик получения серверного времени"""
+	server_time_loaded.emit(args[0])

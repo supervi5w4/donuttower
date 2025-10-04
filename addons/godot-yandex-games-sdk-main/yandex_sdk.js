@@ -9,6 +9,9 @@ function InitGame(params, callback) {
 			console.log("Game initialized");
 			console.log("Environment", ysdk.environment);
 
+			// Настраиваем обработчики паузы и возобновления
+			setupPauseResumeHandlers();
+
 			callback(ysdk.environment);
 		})
 		.catch((err) => {
@@ -20,6 +23,29 @@ function InitGame(params, callback) {
 function GameReady() {
 	ysdk.features.LoadingAPI?.ready();
 	console.log("Game ready");
+}
+
+// LoadingAPI - уведомление о готовности игры
+function LoadingReady() {
+	ysdk.features.LoadingAPI?.ready();
+	console.log("Loading API ready");
+}
+
+// Обработка событий паузы и возобновления игры
+function setupPauseResumeHandlers() {
+	if (ysdk && ysdk.on) {
+		// Обработка события паузы игры
+		ysdk.on('game_api_pause', () => {
+			console.log("Game paused");
+			// Здесь можно добавить логику паузы игры
+		});
+		
+		// Обработка события возобновления игры
+		ysdk.on('game_api_resume', () => {
+			console.log("Game resumed");
+			// Здесь можно добавить логику возобновления игры
+		});
+	}
 }
 
 let player;
@@ -256,4 +282,102 @@ function incrementStats(increments, callback) {
 		console.log("Stats incremented ", result);
 		callback(result);
 	});
+}
+
+// Переменные окружения
+function LoadEnvironmentVariables(callback) {
+	console.log("Loading environment variables");
+	if (ysdk && ysdk.environment) {
+		callback(ysdk.environment);
+	} else {
+		callback({});
+	}
+}
+
+// Серверное время
+function GetServerTime(callback) {
+	console.log("Getting server time");
+	if (ysdk && ysdk.features && ysdk.features.ServerTimeAPI) {
+		ysdk.features.ServerTimeAPI.getServerTime().then((time) => {
+			callback(time);
+		}).catch((error) => {
+			console.error("Error getting server time:", error);
+			callback(0);
+		});
+	} else {
+		// Fallback на локальное время
+		callback(Date.now());
+	}
+}
+
+// Ярлык на рабочий стол
+function CreateShortcut(callback) {
+	console.log("Creating shortcut");
+	if (ysdk && ysdk.features && ysdk.features.ShortcutAPI) {
+		ysdk.features.ShortcutAPI.canPrompt().then((canPrompt) => {
+			if (canPrompt) {
+				ysdk.features.ShortcutAPI.prompt().then(() => {
+					console.log("Shortcut created");
+					callback();
+				}).catch((error) => {
+					console.error("Error creating shortcut:", error);
+					callback();
+				});
+			} else {
+				console.log("Shortcut prompt not available");
+				callback();
+			}
+		}).catch((error) => {
+			console.error("Error checking shortcut availability:", error);
+			callback();
+		});
+	} else {
+		console.log("Shortcut API not available");
+		callback();
+	}
+}
+
+// Оценка игры
+function RequestRating(callback) {
+	console.log("Requesting rating");
+	if (ysdk && ysdk.features && ysdk.features.FeedbackAPI) {
+		ysdk.features.FeedbackAPI.canReview().then((canReview) => {
+			if (canReview) {
+				ysdk.features.FeedbackAPI.requestReview().then(() => {
+					console.log("Rating requested");
+					callback();
+				}).catch((error) => {
+					console.error("Error requesting rating:", error);
+					callback();
+				});
+			} else {
+				console.log("Rating not available");
+				callback();
+			}
+		}).catch((error) => {
+			console.error("Error checking rating availability:", error);
+			callback();
+		});
+	} else {
+		console.log("Feedback API not available");
+		callback();
+	}
+}
+
+// Ссылки на другие игры
+function LoadGameLinks(callback) {
+	console.log("Loading game links");
+	if (ysdk && ysdk.features && ysdk.features.GameplayAPI) {
+		// Получаем ссылки на другие игры через GameplayAPI
+		ysdk.features.GameplayAPI.getGameLinks().then((links) => {
+			console.log("Game links loaded:", links);
+			callback(links || []);
+		}).catch((error) => {
+			console.error("Error loading game links:", error);
+			callback([]);
+		});
+	} else {
+		console.log("Game links API not available");
+		callback([]);
+	}
 }
