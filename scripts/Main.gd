@@ -17,24 +17,16 @@ func _ready() -> void:
 		await YandexSDK.player_initialized
 		print("Main: игрок инициализирован")
 		
-		# 3. Загружаем переменные окружения
-		YandexSDK.load_environment_variables()
-		YandexSDK.environment_variables_loaded.connect(_on_environment_loaded)
+		# 3. Сообщаем о готовности игры к взаимодействию
+		YandexSDK.game_ready()
+		print("Main: game_ready() вызван - игра готова к взаимодействию")
 		
-		# 4. Получаем серверное время
-		YandexSDK.get_server_time()
-		YandexSDK.server_time_loaded.connect(_on_server_time_loaded)
+		# 4. Загружаем данные сохранения из облака
+		YandexSDK.load_data(["save"])
+		print("Main: запрошена загрузка данных сохранения из облака")
 		
-		# 5. ВАЖНО: Сообщаем о готовности игры к взаимодействию (LoadingAPI.ready)
-		# Это должно быть вызвано сразу после инициализации игры
-		YandexSDK.loading_ready()
-		print("Main: LoadingAPI.ready() вызван - игра готова к взаимодействию")
-		
-		# 6. Настраиваем обработчики событий
+		# 5. Настраиваем обработчики событий
 		_setup_sdk_handlers()
-		
-		# 7. Настраиваем обработчики паузы/возобновления
-		_setup_pause_resume_handlers()
 	else:
 		print("Main: не на платформе Yandex, работаем в режиме разработки")
 	
@@ -52,17 +44,17 @@ func _setup_sdk_handlers():
 		YandexSDK.rewarded_ad.connect(_on_rewarded_result)
 		print("Main: обработчики SDK настроены")
 
-func _on_environment_loaded(variables: Dictionary):
-	"""Обработчик загрузки переменных окружения"""
-	print("Main: переменные окружения загружены: ", variables)
-
-func _on_server_time_loaded(time: int):
-	"""Обработчик получения серверного времени"""
-	print("Main: серверное время получено: ", time)
 
 func _on_data_loaded(data: Dictionary):
 	"""Обработчик загрузки данных игрока"""
 	print("Main: данные игрока загружены: ", data)
+	
+	# Передаем данные сохранения в GameStateManager для обработки
+	if data.has("save"):
+		print("Main: передаем данные сохранения в GameStateManager")
+		GameStateManager.apply_cloud_save(data["save"])
+	else:
+		print("Main: данные сохранения не найдены в загруженных данных")
 
 func _on_stats_loaded(stats: Dictionary):
 	"""Обработчик загрузки статистики"""
@@ -79,9 +71,3 @@ func _on_interstitial_result(result: String):
 func _on_rewarded_result(result: String):
 	"""Обработчик результата рекламы за награду"""
 	print("Main: реклама за награду: ", result)
-
-func _setup_pause_resume_handlers():
-	"""Настраивает обработчики паузы и возобновления игры"""
-	if YandexSDK and YandexSDK.is_working():
-		# SDK автоматически обрабатывает паузу/возобновление через focus события
-		print("Main: обработчики паузы/возобновления настроены через SDK")

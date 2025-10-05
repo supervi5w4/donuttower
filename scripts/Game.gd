@@ -1219,6 +1219,13 @@ func _setup_language_manager() -> void:
 
 func _on_language_changed(_language_code: String) -> void:
 	"""Обработчик смены языка - обновляем все тексты"""
+	print("Game: получен сигнал смены языка на: ", _language_code)
+	
+	# Принудительно сохраняем язык при каждой смене
+	if LanguageManager:
+		LanguageManager._save_language_setting()
+		print("Game: язык сохранен при смене: ", _language_code)
+	
 	_update_game_over_score()
 	_update_all_ui_texts()
 

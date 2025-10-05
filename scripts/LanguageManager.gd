@@ -8,19 +8,42 @@ var available_languages: Array[String] = ["ru", "en"]
 
 func _ready() -> void:
 	print("LanguageManager: инициализация...")
+	
+	# Проверяем, не установлен ли уже правильный язык
+	var current_locale = TranslationServer.get_locale()
+	if current_locale != "" and current_locale in available_languages:
+		print("LanguageManager: язык уже установлен в TranslationServer: ", current_locale)
+		current_language = current_locale
+		print("LanguageManager: используем уже установленный язык: ", current_language)
+		# Все равно загружаем переводы и уведомляем о готовности
+		_load_translations()
+		language_changed.emit(current_language)
+		print("LanguageManager: инициализация завершена с уже установленным языком: ", current_language)
+		return
+	
 	# Принудительно загружаем переводы ПЕРВЫМИ
 	_load_translations()
 	# Загружаем сохраненный язык (включая определение языка браузера)
 	_load_language_setting()
-	# Применяем язык только если он еще не установлен
-	if TranslationServer.get_locale() != current_language:
-		print("LanguageManager: применяем язык: ", current_language)
-		_set_language(current_language)
-	else:
-		print("LanguageManager: язык уже установлен: ", current_language)
+	
+	# КРИТИЧНО: Проверяем еще раз, не изменился ли язык во время загрузки
+	var final_locale = TranslationServer.get_locale()
+	if final_locale != "" and final_locale in available_languages and final_locale != current_language:
+		print("LanguageManager: язык изменился во время загрузки! TranslationServer: ", final_locale, ", current_language: ", current_language)
+		current_language = final_locale
+		print("LanguageManager: используем язык из TranslationServer: ", current_language)
+		language_changed.emit(current_language)
+		print("LanguageManager: инициализация завершена с языком из TranslationServer: ", current_language)
+		return
+	
+	# Принудительно применяем язык только если он еще не установлен
+	print("LanguageManager: применяем язык: ", current_language)
+	_set_language(current_language)
+	
 	# Дополнительная проверка: убеждаемся, что язык действительно сохранен
 	print("LanguageManager: финальная проверка - сохраняем язык еще раз для надежности")
 	_save_language_setting()
+	
 	# Уведомляем о том, что язык готов
 	language_changed.emit(current_language)
 	print("LanguageManager: инициализация завершена, текущий язык: ", current_language)
@@ -56,6 +79,14 @@ func _load_translations() -> void:
 func _load_language_setting() -> void:
 	"""Загружает сохраненную настройку языка"""
 	print("LanguageManager: начинаем загрузку настроек языка...")
+	
+	# Проверяем, не установлен ли уже язык в TranslationServer
+	var current_locale = TranslationServer.get_locale()
+	if current_locale != "" and current_locale in available_languages:
+		print("LanguageManager: язык уже установлен в TranslationServer: ", current_locale)
+		current_language = current_locale
+		print("LanguageManager: используем уже установленный язык: ", current_language)
+		return
 	
 	# Сначала пытаемся загрузить сохраненную настройку языка
 	var config = ConfigFile.new()
@@ -123,16 +154,40 @@ func _save_language_setting() -> void:
 		print("LanguageManager: ошибка сохранения настроек языка!")
 	else:
 		print("LanguageManager: настройки языка успешно сохранены")
+		
+		# Дополнительная проверка: читаем файл обратно, чтобы убедиться, что он сохранился
+		var verify_config = ConfigFile.new()
+		var verify_err = verify_config.load("user://settings.cfg")
+		if verify_err == OK and verify_config.has_section_key("settings", "language"):
+			var saved_value = verify_config.get_value("settings", "language")
+			if saved_value == current_language:
+				print("LanguageManager: проверка успешна - язык корректно сохранен: ", saved_value)
+			else:
+				print("LanguageManager: ОШИБКА - сохраненный язык не совпадает! Ожидался: ", current_language, ", получен: ", saved_value)
+		else:
+			print("LanguageManager: ОШИБКА - не удалось прочитать сохраненный файл для проверки")
 
 func _set_language(language_code: String) -> void:
 	"""Устанавливает язык интерфейса"""
 	if language_code in available_languages:
 		current_language = language_code
-		TranslationServer.set_locale(language_code)
+		
+		# КРИТИЧНО: Проверяем, не установлен ли уже правильный язык
+		var current_locale = TranslationServer.get_locale()
+		if current_locale == language_code:
+			print("LanguageManager: язык уже установлен в TranslationServer: ", language_code)
+		else:
+			print("LanguageManager: устанавливаем новый язык в TranslationServer: ", language_code)
+			TranslationServer.set_locale(language_code)
+		
 		# Сохраняем язык сразу после установки
 		_save_language_setting()
 		print("LanguageManager: установлен язык: ", language_code)
 		print("LanguageManager: текущая локаль TranslationServer: ", TranslationServer.get_locale())
+		
+		# Принудительно обновляем все переводы
+		_force_translation_update()
+		
 		language_changed.emit(language_code)
 	else:
 		print("LanguageManager: неподдерживаемый язык: ", language_code)
@@ -141,13 +196,21 @@ func _set_language(language_code: String) -> void:
 		TranslationServer.set_locale("ru")
 		_save_language_setting()
 		print("LanguageManager: установлен язык по умолчанию: ru")
+		
+		# Принудительно обновляем все переводы
+		_force_translation_update()
+		
 		language_changed.emit("ru")
 
 func switch_language() -> void:
 	"""Переключает между доступными языками"""
 	var current_index = available_languages.find(current_language)
 	var next_index = (current_index + 1) % available_languages.size()
-	_set_language(available_languages[next_index])
+	var next_language = available_languages[next_index]
+	
+	print("LanguageManager: switch_language() - текущий: ", current_language, " (индекс: ", current_index, "), следующий: ", next_language, " (индекс: ", next_index, ")")
+	
+	_set_language(next_language)
 
 func get_current_language() -> String:
 	"""Возвращает текущий язык"""
@@ -168,6 +231,28 @@ func get_language_display_name(language_code: String) -> String:
 			return "ENG"
 		_:
 			return language_code.to_upper()
+
+func _force_translation_update() -> void:
+	"""Принудительно обновляет все переводы"""
+	print("LanguageManager: принудительно обновляем переводы...")
+	
+	# Перезагружаем переводы
+	_load_translations()
+	
+	# Устанавливаем локаль еще раз
+	TranslationServer.set_locale(current_language)
+	
+	# Проверяем, что переводы работают
+	var test_translation = tr("ui.start.button")
+	print("LanguageManager: тестовый перевод 'ui.start.button': '", test_translation, "'")
+	
+	# Если переводы все еще не работают, пробуем еще раз
+	if test_translation == "ui.start.button":
+		print("LanguageManager: переводы не работают, пробуем еще раз...")
+		await get_tree().process_frame
+		TranslationServer.set_locale(current_language)
+		test_translation = tr("ui.start.button")
+		print("LanguageManager: повторный тестовый перевод: '", test_translation, "'")
 
 func _detect_browser_language() -> String:
 	"""Определяет язык браузера через JavaScript"""
