@@ -52,9 +52,6 @@ var game_over_panel: Control
 
 # Кнопка следующего уровня (создадим программно)
 var next_level_button: Button
-
-# Кнопка дополнительной жизни
-var extra_life_button: Button
 var spawner: Spawner
 # YandexSDK теперь доступен как автозагруженный синглтон
 var preview: PreviewDonut
@@ -443,73 +440,7 @@ func _setup_game_over_panel() -> void:
 			
 			# Скрываем кнопку по умолчанию
 			next_level_button.visible = false
-	
-	# Создаем кнопку дополнительной жизни
-	_setup_extra_life_button()
 
-func _setup_extra_life_button() -> void:
-	"""Создает кнопку дополнительной жизни"""
-	# Проверяем, что game_over_panel инициализирован
-	if not game_over_panel:
-		print("Ошибка: game_over_panel не инициализирован!")
-		return
-	
-	# Проверяем, есть ли уже кнопка в сцене
-	extra_life_button = game_over_panel.get_node_or_null("MainContainer/ExtraLifeButton")
-	
-	if extra_life_button:
-		# Кнопка уже есть в сцене - подключаем сигнал только если он еще не подключен
-		if not extra_life_button.pressed.is_connected(_on_extra_life_pressed):
-			extra_life_button.pressed.connect(_on_extra_life_pressed)
-		# Скрываем кнопку по умолчанию
-		extra_life_button.visible = false
-	else:
-		# Создаем кнопку программно
-		extra_life_button = Button.new()
-		extra_life_button.name = "ExtraLifeButton"
-		extra_life_button.text = tr("ui.extra_life.button")
-		extra_life_button.custom_minimum_size = Vector2(400, 80)
-		extra_life_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		extra_life_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		
-		# Стилизация кнопки в том же стиле, что и MenuButton
-		extra_life_button.add_theme_color_override("font_hover_color", Color(0.2, 0.1, 0.05, 1))
-		extra_life_button.add_theme_color_override("font_color", Color(0.2, 0.1, 0.05, 1))
-		extra_life_button.add_theme_color_override("font_pressed_color", Color(0.2, 0.1, 0.05, 1))
-		extra_life_button.add_theme_font_size_override("font_size", 24)
-		
-		# Применяем те же стили, что и у MenuButton
-		var menu_btn := game_over_panel.get_node("MainContainer/MenuButton")
-		if menu_btn:
-			# Копируем стили от MenuButton
-			extra_life_button.add_theme_stylebox_override("hover", menu_btn.get_theme_stylebox("hover"))
-			extra_life_button.add_theme_stylebox_override("pressed", menu_btn.get_theme_stylebox("pressed"))
-			extra_life_button.add_theme_stylebox_override("normal", menu_btn.get_theme_stylebox("normal"))
-		
-		# Добавляем кнопку в MainContainer в правильную позицию
-		var main_container := game_over_panel.get_node("MainContainer")
-		
-		# Находим индекс кнопки MenuButton
-		var menu_button_index := -1
-		for i in range(main_container.get_child_count()):
-			if main_container.get_child(i).name == "MenuButton":
-				menu_button_index = i
-				break
-		
-		if menu_button_index >= 0:
-			# Добавляем кнопку перед MenuButton
-			main_container.add_child(extra_life_button)
-			main_container.move_child(extra_life_button, menu_button_index)
-		else:
-			# Fallback: добавляем в конец
-			main_container.add_child(extra_life_button)
-		
-		# Подключаем сигнал только если он еще не подключен
-		if not extra_life_button.pressed.is_connected(_on_extra_life_pressed):
-			extra_life_button.pressed.connect(_on_extra_life_pressed)
-		
-		# Скрываем кнопку по умолчанию
-		extra_life_button.visible = false
 
 func _setup_white_flash() -> void:
 	"""Настраивает белую вспышку экрана"""
@@ -980,16 +911,6 @@ func _on_restart_pressed() -> void:
 	# Загружаем главное меню вместо сброса игры
 	get_tree().change_scene_to_file("res://scenes/StartMenu.tscn")
 
-func _on_extra_life_pressed() -> void:
-	"""Обработчик нажатия кнопки дополнительной жизни"""
-	# Запускаем аудио контекст при первом взаимодействии
-	# Показываем рекламу за вознаграждение
-	if OS.has_feature("yandex"):
-		YandexSDK.show_rewarded_ad()
-	else:
-		# Для тестирования вне Yandex Games
-		# Симулируем успешный просмотр рекламы
-		_on_rewarded_ad("rewarded")
 
 
 func _reset_game() -> void:
@@ -1093,8 +1014,6 @@ func _setup_yandex_sdk() -> void:
 	# Подключаем сигналы от официального YandexSDK только если они еще не подключены
 	if not YandexSDK.interstitial_ad.is_connected(_on_interstitial_ad):
 		YandexSDK.interstitial_ad.connect(_on_interstitial_ad)
-	if not YandexSDK.rewarded_ad.is_connected(_on_rewarded_ad):
-		YandexSDK.rewarded_ad.connect(_on_rewarded_ad)
 	if not YandexSDK.stats_loaded.is_connected(_on_stats_loaded):
 		YandexSDK.stats_loaded.connect(_on_stats_loaded)
 	
@@ -1137,44 +1056,6 @@ func _on_interstitial_ad(result: String) -> void:
 			# После ошибки interstitial рекламы тоже восстанавливаем музыку
 			print("Game: ошибка interstitial рекламы, восстанавливаем музыку")
 
-func _on_rewarded_ad(result: String) -> void:
-	# Обработчик результата Rewarded рекламы
-	match result:
-		"opened":
-			pass
-		"rewarded":
-			_restart_current_level()
-		"closed":
-			# После закрытия рекламы восстанавливаем музыку
-			print("Game: реклама закрыта, восстанавливаем музыку")
-		"error":
-			# После ошибки рекламы тоже восстанавливаем музыку
-			print("Game: ошибка рекламы, восстанавливаем музыку")
-
-func _restart_current_level() -> void:
-	"""Перезапускает текущий уровень после просмотра рекламы"""
-	# Скрываем панель Game Over
-	_hide_game_over()
-	
-	# Сбрасываем состояние игры
-	_reset_game()
-	
-	# Перезапускаем уровень
-	match level_number:
-		1:
-			get_tree().change_scene_to_file("res://scenes/Game.tscn")
-		2:
-			get_tree().change_scene_to_file("res://scenes/Game_level_2.tscn")
-		3:
-			get_tree().change_scene_to_file("res://scenes/Game_level_3.tscn")
-		4:
-			get_tree().change_scene_to_file("res://scenes/Game_level_4.tscn")
-		5:
-			get_tree().change_scene_to_file("res://scenes/Game_level_5.tscn")
-		6:
-			get_tree().change_scene_to_file("res://scenes/Game_level_6.tscn")
-		_:
-			get_tree().change_scene_to_file("res://scenes/Game.tscn")
 
 func _on_data_loaded(data: Dictionary) -> void:
 	# Обработчик загрузки данных от YandexSDK
@@ -1680,34 +1561,23 @@ func _restore_game_state_if_needed():
 	"""Восстанавливает состояние игры если есть сохраненные данные"""
 	if GameStateManager.has_game_in_progress():
 		var saved_level = GameStateManager.get_game_level()
-		var saved_score = GameStateManager.get_game_score()
 		var saved_state = GameStateManager.get_game_state()
 		
 		# Проверяем, что сохраненный уровень совпадает с текущим
 		if saved_level == level_number:
-			print("Game: восстанавливаем состояние игры - уровень: ", saved_level, ", счет: ", saved_score, ", состояние: ", saved_state)
+			print("Game: восстанавливаем состояние игры - уровень: ", saved_level, ", состояние: ", saved_state, " (счет сбрасывается на 0)")
 			
-			# Восстанавливаем счет
-			score = saved_score
-			get_node("/root/GameStateManager").score = score
-			
+			# Счет НЕ восстанавливаем - он остается 0 (уже установлен в _reset_level_state)
 			# Обновляем UI (ждем следующего кадра чтобы LevelUI был готов)
 			await get_tree().process_frame
 			if _level_ui:
 				_level_ui.set_progress(score, score_to_unlock)
 			
-			# Если игра была в состоянии "playing", начинаем сразу
+			# Если игра была в состоянии "playing", восстанавливаем состояние но НЕ спавним пончик
 			if saved_state == "playing":
-				print("Game: восстанавливаем состояние PLAYING")
+				print("Game: восстанавливаем состояние PLAYING (без автоматического спавна)")
 				_state = GameMode.PLAY
-				# Спавним первый пончик для продолжения
-				var spawn_pos: Vector2
-				if spawner != null:
-					spawn_pos = spawner.get_spawn_position()
-				else:
-					spawn_pos = Vector2(VIRT_W * 0.5, 120.0)
-				_spawn_donut(spawn_pos)
-				_last_spawn_time = float(Time.get_ticks_msec()) / 1000.0
+				# НЕ спавним пончик автоматически - игрок должен сам нажать на экран
 			elif saved_state == "gameover":
 				print("Game: восстанавливаем состояние GAMEOVER")
 				_state = GameMode.GAMEOVER

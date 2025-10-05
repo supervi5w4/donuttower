@@ -11,8 +11,14 @@ func _ready() -> void:
 	if language_manager:
 		print("StartMenu: подключаемся к LanguageManager")
 		language_manager.language_changed.connect(_on_language_changed)
-		# Ждем, пока LanguageManager полностью инициализируется
-		await language_manager.ready
+		
+		# Проверяем, готов ли LanguageManager уже
+		if not language_manager.is_node_ready():
+			print("StartMenu: LanguageManager еще не готов, ждем...")
+			await language_manager.ready
+		else:
+			print("StartMenu: LanguageManager уже готов")
+		
 		print("StartMenu: LanguageManager готов, текущий язык: ", language_manager.get_current_language())
 		
 		# КРИТИЧНО: Проверяем синхронизацию LanguageManager с TranslationServer
@@ -261,6 +267,15 @@ func _update_all_texts():
 	else:
 		print("StartMenu: лейбл описания не найден")
 	
+	# Обновляем кнопку продолжения игры если она существует
+	var continue_button = $MainContainer/ContinueButton
+	if continue_button:
+		var new_text = tr("ui.continue.button")
+		print("StartMenu: обновляем кнопку продолжения: '", new_text, "'")
+		continue_button.text = new_text
+	else:
+		print("StartMenu: кнопка продолжения не найдена")
+	
 	# КРИТИЧНО: Обновляем кнопку языка тоже
 	_update_language_button()
 	
@@ -329,7 +344,7 @@ func _setup_game_buttons():
 		print("StartMenu: найдена сохраненная игра - уровень: ", saved_level, ", счет: ", saved_score, ", состояние: ", saved_state)
 		
 		# Показываем кнопку "Продолжить игру" если есть сохраненная игра
-		_show_continue_button(saved_level, saved_score, saved_state)
+		_show_continue_button(saved_level, saved_state)
 		
 		# Переименовываем кнопку "Начать играть" в "Новая игра"
 		_rename_start_button_to_new_game()
@@ -344,9 +359,9 @@ func _remove_continue_button():
 		print("StartMenu: удаляем существующую кнопку продолжения")
 		continue_button.queue_free()
 
-func _show_continue_button(level: int, score: int, state: String):
+func _show_continue_button(level: int, state: String):
 	"""Показывает кнопку продолжения игры"""
-	print("StartMenu: создаем кнопку продолжения для уровня ", level, " со счетом ", score)
+	print("StartMenu: создаем кнопку продолжения для уровня ", level)
 	
 	# Получаем кнопку "Начать играть"
 	var start_button = $MainContainer/StartButton
@@ -359,10 +374,11 @@ func _show_continue_button(level: int, score: int, state: String):
 	# Создаем кнопку "Продолжить игру"
 	var continue_button = Button.new()
 	continue_button.name = "ContinueButton"
-	continue_button.text = tr("ui.continue.button") + " (Ур. " + str(level) + ", " + str(score) + " очков)"
-	continue_button.custom_minimum_size = Vector2(400, 80)
-	continue_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	continue_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	continue_button.text = tr("ui.continue.button")
+	# Копируем точные размеры от StartButton
+	continue_button.custom_minimum_size = start_button.custom_minimum_size
+	continue_button.size_flags_horizontal = start_button.size_flags_horizontal
+	continue_button.size_flags_vertical = start_button.size_flags_vertical
 	
 	# Стилизация кнопки в том же стиле, что и StartButton
 	continue_button.add_theme_color_override("font_hover_color", Color(0.2, 0.1, 0.05, 1))
@@ -392,11 +408,10 @@ func _on_continue_button_pressed():
 		return
 	
 	var saved_level = GameStateManager.get_game_level()
-	var saved_score = GameStateManager.get_game_score()
 	
-	print("StartMenu: продолжаем игру - уровень: ", saved_level, ", счет: ", saved_score)
+	print("StartMenu: продолжаем игру - уровень: ", saved_level, " (счет сбрасывается на 0)")
 	
-	# Устанавливаем текущий уровень
+	# Устанавливаем текущий уровень и сбрасываем счет на 0
 	LevelData.set_current_level(saved_level)
 	GameStateManager.reset_for_level(saved_level)
 	
